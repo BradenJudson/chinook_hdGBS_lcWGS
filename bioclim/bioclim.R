@@ -37,6 +37,8 @@ for (i in 1:nrow(sites)) {
 # Put the bioclim data into a single dataframe. 
 biovar <- bind_rows(c.list)
 
-# Some issues with site coords being in the ocean. Ask TH.
-biovar[is.na(biovar$bio1), "Site"]
+# No missing data.
+sum(is.na(biovar)) == 0
+
+write.csv(biovar, "ch_bioclim.csv", row.names = FALSE)
 
