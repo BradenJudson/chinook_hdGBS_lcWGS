@@ -31,7 +31,10 @@ for (i in 1:nrow(sites)) {
                            path = "./wcdata", 
                            download = FALSE)
   
-  # Download project bioclimatic variables.
+  # Download projected bioclimatic variables.
+  # Following Tigano et al. 2023 [Evo. App.]
+  # Climate data at RCP2.6 (~best case).
+  # Set download = TRUE for first time.
   f.clim26 <- cmip6_tile(ssp  = "126",
                          lon  = lon,
                          lat  = lat,
@@ -42,6 +45,7 @@ for (i in 1:nrow(sites)) {
                          model = "UKESM1-0-LL",
                          download = FALSE)
   
+  # Similar to above, but RCP8.5 (~worst case).
   f.clim85 <- cmip6_tile(ssp  = "585",
                          lon  = lon,
                          lat  = lat,
@@ -56,14 +60,21 @@ for (i in 1:nrow(sites)) {
   points <- vect(sites[,c(2:3)], crs = "EPSG:4326",
                  geom = c("Longitude", "Latitude"))
   
-  # Join with site name and populate blank list.
-  c.list[[i]] <- cbind(sites[i, 1], 
-  # Extract bioclim data and rename the columns.
-  terra::extract(c.clim, y = points)[i,2:20]) %>% 
-    `colnames<-`(., c("Site", paste0("bio", seq(1, 19, 1)))) %>% 
-    mutate(grp = "current")
+  # Set up a function to extract data from each of the 
+  # three climate datasets isolated above.
+  # Also renames columns consistently and adds two qualifiers.
+  f <- function(clim, ssp, time) cbind(sites[i, 1],
+       terra::extract(clim, y = points)[i, 2:20]) %>% 
+       `colnames<-`(., c("Site", paste0("bio", seq(1, 19, 1)))) %>% 
+       mutate(period = time, ssp = ssp) 
   
-  
+  # For each site, bind together and specify time period and ssp.
+  c.list[[i]] <- rbind(
+    f(f.clim26, time = "2041-2060", ssp = "26"),
+    f(f.clim85, time = "2041-2060", ssp = "85"),
+    f(c.clim,   time = "1970-2000", ssp = "NA"),
+    make.row.names = FALSE # Just use numbers.
+  )
   
 }
 
@@ -77,12 +88,16 @@ write.csv(biovar, "ch_bioclim.csv", row.names = FALSE)
 
 # Scaling and autocorrelation --------------------------------------------------
 
+"%ni%" <- Negate("%in%")
+cbio <- biovar[biovar$period == "1970-2000", colnames(biovar) %ni% c("period", "ssp")]
+
 # Correlation matrix of bioclimatic variables. 
-(bcor <- abs(cor(biovar[,2:ncol(biovar)])))
+(bcor <- abs(cor(cbio[,-1])))
 bcor[!lower.tri(bcor)] <- 0; hist(bcor)
 
 # Retain variables with less than 80% correlation.
-(ev <- biovar[, !apply(bcor, 2, function(x) any(x > 0.80))])
+(ev <- cbio[, !apply(bcor, 2, function(x) any(x > 0.80))])
+dim(ev) # number of variables retained
 
 # Scale and center (Z-transform) uncorrelated variables.
 sval <- as.data.frame(scale(ev)) %>%  # Make numeric too.
@@ -90,7 +105,7 @@ sval <- as.data.frame(scale(ev)) %>%  # Make numeric too.
 
 # Make a population-specific dataframe with scores along various PC axes. 
 pop_climPC <- as.data.frame(prcomp(sval[,1:(ncol(sval)-1)])$x) %>% 
-  mutate(pop = tools::toTitleCase(tolower(gsub("\\_.*", "", biovar$Site))))
+  mutate(pop = tools::toTitleCase(tolower(gsub("\\_.*", "", cbio$Site))))
 
 ggplot(data = pop_climPC,
        aes(x = PC1, y = PC2, label = pop)) +
@@ -104,7 +119,7 @@ ggplot(data = pop_climPC,
        x = "PC1 (82.0%)") +
   theme_bw()
 
-ggsave("plots/envPCA.tiff", dpi = 300, width = 5, height = 5)
+ggsave("plots/envPCA.tiff", dpi = 300, width = 8, height = 8)
 
 
 # Migration harshness ----------------------------------------------------------

@@ -1,0 +1,10 @@
+*.rds
+*.cpg
+*.dbf
+*.prj
+*.html
+*.shp
+*.shx
+*.VERSION.txt
+*.sbx
+*.shp.xml
