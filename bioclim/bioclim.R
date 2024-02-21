@@ -86,13 +86,16 @@ sum(is.na(biovar)) == 0
 
 write.csv(biovar, "ch_bioclim.csv", row.names = FALSE)
 
+
 # Scaling and autocorrelation --------------------------------------------------
 
-"%ni%" <- Negate("%in%")
+
+"%ni%" <- Negate("%in%") # Custom not-in operator.
+# Retain only contemporary data and remove unnecessary columns.
 cbio <- biovar[biovar$period == "1970-2000", colnames(biovar) %ni% c("period", "ssp")]
 
 # Correlation matrix of bioclimatic variables. 
-(bcor <- abs(cor(cbio[,-1])))
+(bcor <- abs(cor(cbio[,-1]))) # Excludes site info.
 bcor[!lower.tri(bcor)] <- 0; hist(bcor)
 
 # Retain variables with less than 80% correlation.
@@ -104,9 +107,15 @@ sval <- as.data.frame(scale(ev)) %>%  # Make numeric too.
   mutate_if(is.character, is.numeric)
 
 # Make a population-specific dataframe with scores along various PC axes. 
-pop_climPC <- as.data.frame(prcomp(sval[,1:(ncol(sval)-1)])$x) %>% 
+(evpca <- prcomp(sval))
+(pc1ve <- summary(evpca)$importance[2,1]) # PC1 % variation explained.
+(pc2ve <- summary(evpca)$importance[2,2]) # PC2 % variation explained.
+
+# Retain PC scores and attach to each site.
+pop_climPC <- as.data.frame(prcomp(sval)$x) %>% 
   mutate(pop = tools::toTitleCase(tolower(gsub("\\_.*", "", cbio$Site))))
 
+# Plot PC1 and 2 scores.
 ggplot(data = pop_climPC,
        aes(x = PC1, y = PC2, label = pop)) +
   geom_point(size = 2) +
@@ -115,8 +124,8 @@ ggplot(data = pop_climPC,
                    box.padding = 1/3,
                    size = 1.7,
                    segment.size = 1/5) +
-  labs(y = "PC2 (9.49%)", 
-       x = "PC1 (82.0%)") +
+  labs(y = paste0("PC2 (", round(pc2ve*100, 1), "%)"),
+       x = paste0("PC1 (", round(pc1ve*100, 1), "%)")) +
   theme_bw()
 
 ggsave("plots/envPCA.tiff", dpi = 300, width = 8, height = 8)
@@ -137,10 +146,9 @@ ggsave("plots/envPCA.tiff", dpi = 300, width = 8, height = 8)
                              units = "meters", 
                              prj = "EPSG:4326",
                              src = "aws") %>% 
-   as.data.frame(.) %>% 
+   as.data.frame(.) %>% select(c(4,2))) %>% 
    mutate(pop = tools::toTitleCase(tolower(gsub("\\_.*",
-                                  "", sites$Population)))) %>% 
-   select(c(4,2)))
+                                  "", sites$Population)))) 
 
 write.csv(elev, "pop_elevations.csv", row.names = F)
 
