@@ -8,3 +8,5 @@
 *.VERSION.txt
 *.sbx
 *.shp.xml
+/maps
+/gadm
