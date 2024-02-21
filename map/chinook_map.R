@@ -15,37 +15,33 @@ setwd("~/ots_landscape_genetics/map")
 
 library(ggplot2); library(tidyverse); library(raster); library(sf)
 library(bcmaps); library(ggspatial); library(sp); library(geodata)
-library(ggrepel)
-
+library(ggrepel); library(rnaturalearth)
 
 # Custom "not in" operator.
 "%ni%" <- Negate("%in%")
 
-library(rnaturalearth)
-
 # Establish base map -----------------------------------------------------------
 
-# ne_download(scale = 10, type = "lakes", category = "physical", 
-#             destdir = "maps/", load = FALSE)
-# lakes <- ne_load(scale = 10, type = "lakes", destdir = "maps", returnclass = "sf")
-
-# remove.packages("osmdata"); devtools::install_github("ropensci/osmdata"); library(osmdata)
-
+# Download American shape data and a subset of the Canadian data.
 USA <- sf::st_as_sf(geodata::gadm(country = "USA", level = 0, path = "."))
 prov <- sf::st_as_sf(geodata::gadm(country = "CAN", level = 1, path = "."))
 bcn <- prov[prov$NAME_1 %in% c("Alberta", "Yukon", "Northwest Territories", "Nunavut"),]
 
+# Use bcmaps package to get high resolution BC shape data.
+# Necessary due to complexity of coastline.
 bch <- st_transform(bc_bound_hres(), crs = 4326)
 
+# Read in site information and reformat labels.
 sites <- read.delim(file = "ch2023_sequenced.txt") %>% 
   mutate(site = tools::toTitleCase(tolower(gsub("\\_.*", "", Population))))
 
-
+# Read in global river database and subset for relevant systems.
 rivers <- ne_load(scale = 10, type = "rivers_lake_centerlines", destdir = "maps", returnclass = "sf") %>% 
   filter(name %ni% c("Kuskokwim", "North Fork Kuskokwim", "S. Fork Kuskokwim", "Copper", "Kobuk", "Thelon",
                      "Susitna", "Iliamna Lake Outlet", "Coppermine", "Humboldt", "Pit", "Sacramento",
                      "Arctic Red", "Peel", "Bow", "Oldman", "Athabasca", "North Saskatchewan", "Brazeau"))
-  
+
+# Again, use bcmaps to download watercourse dat and subset.
 (riv <- bcmaps::watercourses_5M())
 (sRiv <- riv %>% filter(name_en %in% c("Peace River", "Teslin River", "Cowichan River",
                                        "Fraser River", "Lillooet River", "Adams River",
@@ -56,15 +52,18 @@ rivers <- ne_load(scale = 10, type = "rivers_lake_centerlines", destdir = "maps"
                                        "Nass River", "Similkameen River", "Skeena River",
                                        "North Thompson River", "Thompson River", "Chilko River",
                                        "Inklin River", "Quesnel River", "Chilcotin River",
-                                       "Harrison River", "Portland Canal")))
+                                       "Harrison River", "Portland Canal", "Nechako River",
+                                       "Stuart River", "South Thompson River")))
 
-
+# Above command misses the Canadian Okanagan, so I manually read that in.
 okanagan <- st_read("ok_path.kml")      
 
+# Read in lake data downloaded from iMap BC.
+# Filter some lakes. Object ID part is awkward as some lakes aren't named.
 lakes <- st_transform(st_read(dsn = "DBM_BC_7H_MIL_DRAINAGE_POLY"), crs = 4326) %>% 
-  filter(NAME %in% c("Harrison Lake", "Okanagan Lake", "Lower Arrow Lake", 
+  filter(NAME %in% c("Harrison Lake", "Okanagan Lake", "Lower Arrow Lake", "Fran?ois Lake",
   "Upper Arrow Lake", "Kinbasket Lake", "Adams Lake", "Shuswap Lake", "Fraser Lake") | 
-   OBJECTID %in% c("259", "280", "263", "260", "275", "258", "267"))
+   OBJECTID %in% c("259", "280", "263", "260", "275", "258", "267", "225"))
 
 (pnw <- ggplot() +
   geom_sf(data = USA, fill = "gray90", linewidth = 1/10) +
@@ -77,9 +76,9 @@ lakes <- st_transform(st_read(dsn = "DBM_BC_7H_MIL_DRAINAGE_POLY"), crs = 4326) 
                               pad_y = unit(1/10, "cm"),
                               width_hint = 1/10) + 
     geom_sf(data = okanagan, color = "skyblue", linewidth = 1/4) +
-    geom_sf(data = sRiv, colour = "skyblue", linewidth = 1/4) +
-    geom_sf(data = rivers, colour = "skyblue", linewidth = 1/4) +  
-    geom_sf(data = lakes, colour = "skyblue" , fill = "skyblue") +
+    geom_sf(data = sRiv,    colour = "skyblue", linewidth = 1/4) +
+    geom_sf(data = rivers,  colour = "skyblue", linewidth = 1/4) +  
+    geom_sf(data = lakes,   colour = "skyblue" , fill = "skyblue") +
     coord_sf(xlim = c(-116, -166), ylim = c(41, 66)) +
     theme_void() +
     geom_point(data = sites, size = 1/2,
