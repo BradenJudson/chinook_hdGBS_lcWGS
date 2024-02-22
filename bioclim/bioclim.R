@@ -1,6 +1,7 @@
 library(sp); library(terra)
 library(geodata); library(tidyverse)
 library(ggplot2); library(ggrepel)
+library(raster)
 
 # Set wd.
 setwd("~/ots_landscape_genetics/bioclim")
@@ -9,7 +10,7 @@ setwd("~/ots_landscape_genetics/bioclim")
 sites <- read.delim("ch2023_sequenced.txt")[,c(4,8:9L)]
 
 
-# Retrieve bioclimatic data ----------------------------------------------------
+# ------------------------------------------------------------------------------
 
 
 # Establish a blank list for populating.
@@ -25,12 +26,12 @@ for (i in 1:nrow(sites)) {
   # Store downloaded *.tiff files locally.
   # First, download current (1970 - 2000) conditions.
   c.clim <- worldclim_tile(var  = "bio",
-                           lon  = lon, 
-                           lat  = lat, 
-                           res  = 5,
-                           path = "./wcdata", 
+                           lon  = lon,
+                           lat  = lat,
+                           res  = 1/2,
+                           path = "./wcdata",
                            download = FALSE)
-  
+
   # Download projected bioclimatic variables.
   # Following Tigano et al. 2023 [Evo. App.]
   # Climate data at RCP2.6 (~best case).
@@ -66,13 +67,19 @@ for (i in 1:nrow(sites)) {
   f <- function(clim, ssp, time) cbind(sites[i, 1],
        terra::extract(clim, y = points)[i, 2:20]) %>% 
        `colnames<-`(., c("Site", paste0("bio", seq(1, 19, 1)))) %>% 
-       mutate(period = time, ssp = ssp) 
+       mutate(period = as.factor(time), ssp = as.factor(ssp)) 
   
   # For each site, bind together and specify time period and ssp.
+  # NOTE: First (1970s-2000) dataset is in a different order!!!
+        # bio1, bio10, bio11,...bio9. Unlike the other two. 
+        # Arrange separately otherwise there is a severe mismatch.
   c.list[[i]] <- rbind(
     f(f.clim26, time = "2041-2060", ssp = "26"),
     f(f.clim85, time = "2041-2060", ssp = "85"),
-    f(c.clim,   time = "1970-2000", ssp = "NA"),
+    cbind(sites[i, 1], terra::extract(c.clim, points)[i, 2:20]) %>% 
+      `colnames<-`(., c("Site", paste0("bio", c(1, seq(10, 19, 1),
+                        seq(2, 9, 1))))) %>% 
+      mutate(period = "1970-2000", ssp = NA),
     make.row.names = FALSE # Just use numbers.
   )
   
@@ -85,6 +92,25 @@ biovar <- bind_rows(c.list); head(biovar)
 sum(is.na(biovar)) == 0
 
 write.csv(biovar, "ch_bioclim.csv", row.names = FALSE)
+
+# Visualize potential before/after differences.
+ggplot(data = biovar %>% 
+         pivot_longer(cols = paste0("bio", seq(1, 19, 1))),
+       aes(x = reorder(period, value), 
+           y = value, fill = ssp)) +
+  scale_fill_manual(
+    values = c("blue", "red"),
+    limits = c("26", "85")) +
+  geom_boxplot(alpha = 1/2) +
+  labs(x = NULL, y = "Value") +
+  facet_wrap(~name, scales = "free_y") +
+  theme_bw() +
+  theme(legend.position = "top",
+        panel.grid = element_blank()) +
+  guides(fill = guide_legend(title = "Shared Socio-economic Pathway"))
+
+
+ggsave("plots/clim_ts.tiff", dpi = 300, width = 10, height = 6)
 
 
 # Scaling and autocorrelation --------------------------------------------------
@@ -146,9 +172,10 @@ ggsave("plots/envPCA.tiff", dpi = 300, width = 8, height = 8)
                              units = "meters", 
                              prj = "EPSG:4326",
                              src = "aws") %>% 
-   as.data.frame(.) %>% select(c(4,2))) %>% 
+   as.data.frame(.) %>% 
    mutate(pop = tools::toTitleCase(tolower(gsub("\\_.*",
-                                  "", sites$Population)))) 
+                       "", sites$Population)))) %>% 
+   dplyr::select(c(4,2)))
 
 write.csv(elev, "pop_elevations.csv", row.names = F)
 
