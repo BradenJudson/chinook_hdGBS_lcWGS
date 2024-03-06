@@ -70,7 +70,7 @@ for (i in 1:nrow(sites)) {
        mutate(period = as.factor(time), ssp = as.factor(ssp)) 
   
   # For each site, bind together and specify time period and ssp.
-  # NOTE: First (1970s-2000) dataset is in a different order!!!
+  # NOTE: First (1970s-2000) data set is in a different order!!!
         # bio1, bio10, bio11,...bio9. Unlike the other two. 
         # Arrange separately otherwise there is a severe mismatch.
   c.list[[i]] <- rbind(
@@ -82,7 +82,6 @@ for (i in 1:nrow(sites)) {
       mutate(period = "1970-2000", ssp = NA),
     make.row.names = FALSE # Just use numbers.
   )
-  
 }
 
 # Put the bioclim data into a single dataframe. 
@@ -91,7 +90,7 @@ biovar <- bind_rows(c.list); head(biovar)
 # No missing data.
 sum(is.na(biovar)) == 0
 
-write.csv(biovar, "ch_bioclim.csv", row.names = FALSE)
+write.csv(biovar, "../data/ch_bioclim.csv", row.names = FALSE)
 
 # Visualize potential before/after differences.
 ggplot(data = biovar %>% 
@@ -154,7 +153,7 @@ ggplot(data = pop_climPC,
        x = paste0("PC1 (", round(pc1ve*100, 1), "%)")) +
   theme_bw()
 
-ggsave("plots/envPCA.tiff", dpi = 300, width = 8, height = 8)
+ggsave("plots/envPCA.tiff", dpi = 300, width = 7, height = 7)
 
 
 # Migration harshness ----------------------------------------------------------
@@ -177,7 +176,7 @@ ggsave("plots/envPCA.tiff", dpi = 300, width = 8, height = 8)
                        "", sites$Population)))) %>% 
    dplyr::select(c(4,2)))
 
-write.csv(elev, "pop_elevations.csv", row.names = F)
+write.csv(elev, "../data/pop_elevations.csv", row.names = F)
 
 ggplot(data = elev, 
        aes(x = reorder(pop, elevation),
