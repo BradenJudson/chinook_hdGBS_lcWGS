@@ -31,19 +31,15 @@ do
         file2=$(echo "$file" | perl -pe 's/\.1.fq.gz/\.2.fq.gz/')
         echo "Aligning $file $file2"
 
-
         name=$(basename "$file")
         name2=$(basename "$file2")
 
-        echo "$name and $name2"
-
         bwa mem -t "$NCPU" \
                 "$GENOMEFOLDER"/"$GENOME" "$DATAFOLDER"/"$name" "$DATAFOLDER"/"$name2" 2> /dev/null |
-                samtools view -Sb -q 20 - > "$DATAFOLDER"/"${name%.fq.gz}".bam
+                samtools view -Sb -q 20 - > "$ALIGNFOLDER"/"${name%.fq.gz}".bam
 
         samtools sort --threads "$NCPU" -o "$ALIGNFOLDER"/"${name%.fq.gz}".sorted.bam \
                 "$ALIGNFOLDER"/"${name%.fq.gz}".bam
-
 
         samtools index "$ALIGNFOLDER"/"${name%.fq.gz}".bam
 

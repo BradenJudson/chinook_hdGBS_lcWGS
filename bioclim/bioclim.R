@@ -88,7 +88,7 @@ for (i in 1:nrow(sites)) {
 biovar <- bind_rows(c.list); head(biovar)
 
 # No missing data.
-sum(is.na(biovar)) == 0
+sum(is.na(biovar)) == nrow(biovar)/3
 
 write.csv(biovar, "../data/ch_bioclim.csv", row.names = FALSE)
 
@@ -136,22 +136,36 @@ sval <- as.data.frame(scale(ev)) %>%  # Make numeric too.
 (pc1ve <- summary(evpca)$importance[2,1]) # PC1 % variation explained.
 (pc2ve <- summary(evpca)$importance[2,2]) # PC2 % variation explained.
 
+(loadings <- as.data.frame(evpca$rotation))
+
 # Retain PC scores and attach to each site.
 pop_climPC <- as.data.frame(prcomp(sval)$x) %>% 
   mutate(pop = tools::toTitleCase(tolower(gsub("\\_.*", "", cbio$Site))))
 
-# Plot PC1 and 2 scores.
+# Plot PC1 and PC2 biplot.
 ggplot(data = pop_climPC,
-       aes(x = PC1, y = PC2, label = pop)) +
-  geom_point(size = 2) +
-  geom_label_repel(max.overlaps = Inf,
+       aes(x = PC1, y = PC2)) +
+  theme_bw() + 
+  geom_segment(data = loadings, 
+               # Expand 7-fold purely for visualization. 
+               aes(x = 0, xend = PC1 * 7, 
+                   y = 0, yend = PC2 * 7,
+                   color = rownames(loadings)),
+               arrow = arrow(length = unit(0.3, "cm"))) +
+  theme(legend.title = element_blank(),
+        legend.position = "top",
+        legend.margin = unit(-1, "cm")) +
+  guides(color = guide_legend(nrow = 1))  +
+  geom_label_repel(aes(label = pop), 
+                   max.overlaps = Inf,
                    min.segment.length = 0,
                    box.padding = 1/3,
                    size = 1.7,
                    segment.size = 1/5) +
+  geom_point(size = 2, shape = 21,
+             color = "black", fill = "gray80") +
   labs(y = paste0("PC2 (", round(pc2ve*100, 1), "%)"),
-       x = paste0("PC1 (", round(pc1ve*100, 1), "%)")) +
-  theme_bw()
+       x = paste0("PC1 (", round(pc1ve*100, 1), "%)")) 
 
 ggsave("plots/envPCA.tiff", dpi = 300, width = 7, height = 7)
 
