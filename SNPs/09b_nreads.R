@@ -20,6 +20,8 @@ write.csv(reads, "stats/sample_reads.csv")
 sample_info <- read.csv("info_files/hdGBS_sampleinfo.csv") %>% 
   merge(., reads, by = "Sample")
 
+summary(sample_info$Reads/1e6)
+
 (RP <- ggplot(data = sample_info, 
        aes(x = Population, y = Reads/1e6)) + 
   geom_hline(yintercept = Th/1e6, colour = "blue2",
@@ -38,6 +40,8 @@ sample_info <- read.csv("info_files/hdGBS_sampleinfo.csv") %>%
         legend.position = "none") +
   labs(x = NULL, y = "Reads (millions)"))
 
+# Puts marginal histogram on right-most y-axis.
+# Shows skewed distribution.
 (RPH <- ggMarginal(RP, type = "histogram", margins = "y",
            binwidth = 1, fill = "gray90", size = 10))
 
