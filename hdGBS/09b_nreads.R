@@ -1,9 +1,9 @@
 library(tidyverse); library(ggplot2)
 library(ggExtra); library(cowplot)
 
-setwd("~/ots_landscape_genetics/SNPs")
+setwd("~/ots_landscape_genetics/hdGBS")
 
-Th <- 1.5e6 # Reads threshold for pass/fail.
+Th <- 1.5e6 # Reads threshold for pass/fail [[arbitary]]
 
 # This file contains the read numbers per bam file.
 reads <- read.table(file = "stats/sample_reads.txt",
@@ -20,7 +20,6 @@ write.csv(reads, "stats/sample_reads.csv")
 sample_info <- read.csv("info_files/hdGBS_sampleinfo.csv") %>% 
   merge(., reads, by = "Sample")
 
-summary(sample_info$Reads/1e6)
 
 (RP <- ggplot(data = sample_info, 
        aes(x = Population, y = Reads/1e6)) + 
@@ -43,14 +42,21 @@ summary(sample_info$Reads/1e6)
 # Puts marginal histogram on right-most y-axis.
 # Shows skewed distribution.
 (RPH <- ggMarginal(RP, type = "histogram", margins = "y",
-           binwidth = 1, fill = "gray90", size = 10))
+           binwidth = 1/2, fill = "gray90", size = 10))
 
 # Use cowplot here to save multi-plot configuration more easily.
 save_plot("./stats/pop_reads.tiff", RPH, ncol = 2, base_height = 6)
 
 # Summary stats overall.
 summary(sample_info$Reads)
-quantile(sample_info$Reads, probs = c(0.01, 0.05, 0.08, 0.1, 0.9, 0.95, 0.99))
+quantile(sample_info$Reads, probs = c(0.01, 0.05, 0.06, 0.1, 0.9, 0.95, 0.99))
+
+# Plot histogram of individual read depths. 
+# Clear demarcation above/below 1e6.
+nrow(sample_info[sample_info$Reads < 1e6, ])
+hist(sample_info$Reads/1e6, breaks = 150,
+     main = NULL,xlab = "Reads (millions)"); 
+abline(v = 1, col = "red", lty = 2, lwd = 1)
 
 # Summary stats by population.
 (pop_reads <- sample_info %>% 
