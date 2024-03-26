@@ -13,3 +13,5 @@ HDplot.R
 *.lmiss
 *.frq.count
 *.ldepth.mean
+*.vcf
+*.vcf.gz

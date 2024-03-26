@@ -2,4 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
+*.vcf
+*.vcf.gz
 writing/
