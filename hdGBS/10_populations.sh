@@ -27,5 +27,7 @@ populations -P "$STACKS_FOLDER" \
         -t "$NUM_CPU" -p 2 -r 0.6 \
         --ordered-export \
         --fasta-loci \
+	--plink \
+	--write-random-snp \
         --vcf \
         -O 08_populations

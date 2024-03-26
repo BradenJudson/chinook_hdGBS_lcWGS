@@ -3,3 +3,13 @@
 *.tiff
 hdgbs_fasqgz_sizes.csv
 *.xlsx
+HDplot.R
+./HDplot
+*.frq
+*.het
+*.idepth
+*.idepth.mean
+*.imiss
+*.lmiss
+*.frq.count
+*.ldepth.mean
