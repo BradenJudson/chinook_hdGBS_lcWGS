@@ -6,7 +6,7 @@ library(tidyverse); library(ggplot2); library(vcfR)
 # Also see McKinney et al., 2017 (DOI: 10.1111/1755-0998.12613).
 source("./HDplot/HDplot.R")
 
-input <- read.vcfR("../data/snps_maf2.vcf.gz")
+input <- read.vcfR("../data/hdgbs_snps_maf2_m60.vcf.gz")
 
 # Tresholds in Chinook described in McKinney et al., 2017.
 Hmax <- 0.6
@@ -36,3 +36,9 @@ head(HDplotResults)
 
 ggsave("./stats/hdplot_fig.tiff", dpi = 300,
        width = 10, height = 8)
+
+# Write putative paralog positions to directory. 
+# Exclude using vcftools --exclude-positions
+write.table(HDplotResults[HDplotResults$SNP == "Duplicate", c("CHROM", "POS")],
+            "./stats/duplicateSNP_IDs.txt", sep = "\t", quote = F, 
+            row.names = F, col.names = F)

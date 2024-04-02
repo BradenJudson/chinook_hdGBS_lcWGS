@@ -33,7 +33,9 @@ bch <- st_transform(bc_bound_hres(), crs = 4326)
 
 # Read in site information and reformat labels.
 sites <- read.delim(file = "ch2023_sequenced.txt") %>% 
-  mutate(site = tools::toTitleCase(tolower(gsub("\\_.*", "", Population))))
+  arrange(Latitude) %>% 
+  mutate(site = tools::toTitleCase(tolower(gsub("\\_.*", "", Population))),
+         sitenum = rownames(.))
 
 # Read in global river database and subset for relevant systems.
 rivers <- ne_load(scale = 10, type = "rivers_lake_centerlines", destdir = "maps", returnclass = "sf") %>% 
@@ -75,16 +77,28 @@ lakes <- st_transform(st_read(dsn = "DBM_BC_7H_MIL_DRAINAGE_POLY"), crs = 4326) 
   ggspatial::annotation_scale(location = "bl",
                               pad_y = unit(1/10, "cm"),
                               width_hint = 1/10) + 
-    geom_sf(data = okanagan, color = "skyblue", linewidth = 1/4) +
-    geom_sf(data = sRiv,    colour = "skyblue", linewidth = 1/4) +
-    geom_sf(data = rivers,  colour = "skyblue", linewidth = 1/4) +  
-    geom_sf(data = lakes,   colour = "skyblue" , fill = "skyblue") +
-    coord_sf(xlim = c(-116, -166), ylim = c(41, 66)) +
-    theme_void() +
-    geom_point(data = sites, size = 1/2,
-               aes(x = Longitude, y = Latitude)))
+    geom_sf(data = okanagan, color  = "skyblue", linewidth = 1/4) +
+    geom_sf(data = sRiv,     colour = "skyblue", linewidth = 1/4) +
+    geom_sf(data = rivers,   colour = "skyblue", linewidth = 1/4) +  
+    geom_sf(data = lakes,    colour = "skyblue", fill = "skyblue") +
+    # coord_sf(xlim = c(-116, -166), ylim = c(41, 66)) +
+    geom_point(data = sites, size = 2.5, stroke = 1/3,
+               shape = 21, color = "black", fill = "white",
+               aes(x = Longitude, y = Latitude)) +
+    geom_text(data = sites, size = 1.3, fontface = "bold",
+              aes(x = Longitude, y = Latitude, label = `sitenum`)) +
+    scale_fill_manual(values = rep("white", nrow(sites)),
+                      labels = paste(sites$sitenum, sites$site)) +
+    guides(fill = guide_legend()) +
+    coord_sf(xlim = c(-115, -165), ylim = c(41, 66)) +
+    theme_minimal() +
+    theme(legend.position = "top", panel.grid = element_blank(), legend.key = element_blank(),
+          panel.background = element_rect(fill = alpha("skyblue", 1/10)),
+          panel.border = element_rect(color = "black", fill = NA)))
 
-ggsave("plots/bc_map.tiff", dpi = 300, width = 5, height = 5)
+ggsave("plots/bc_map.tiff", dpi = 300, width = 6, height = 6)
+
+# https://stackoverflow.com/questions/24801987/numbered-point-labels-plus-a-legend-in-a-scatterplot
 
 
 # Overlay CU info --------------------------------------------------------------
