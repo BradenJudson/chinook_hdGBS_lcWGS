@@ -22,7 +22,7 @@ GENOME="GCF_018296145.1_Otsh_v2.0_genomic.fna"
 TRIMMED_FOLDER="03d_trimmed_reads_alignment4"
 ALIGNED_FOLDER="04_all_alignments"
 NCPU=64
-TEMP_FOLDER="999_tmp"
+TEMP_FOLDER="99_tmp"
 SAMPLE_FILE="samples.txt"
 
 
