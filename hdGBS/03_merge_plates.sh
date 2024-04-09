@@ -10,7 +10,7 @@
 #SBATCH --account=grdi_genarcc
 
 
-cd /gpfs/fs7/grdi/genarcc/wp3/judsonb/chinook_hdGBS/02_reads
+cd /gpfs/fs7/grdi/genarcc/wp3/judsonb/chinook_hdGBS/02_reads/trimmed
 
 # Plate 1, Forward:
 cat NS.LH00487_0019.001.D701---B501.Wellband-P1_R1.fastq.gz \

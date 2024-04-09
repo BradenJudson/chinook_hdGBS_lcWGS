@@ -14,7 +14,7 @@ setwd("~/ots_landscape_genetics/map")
 
 library(ggplot2); library(tidyverse); library(raster); library(sf)
 library(bcmaps); library(ggspatial); library(sp); library(geodata)
-library(ggrepel); library(rnaturalearth)
+library(ggrepel); library(rnaturalearth); library(cowplot)
 
 # Custom "not in" operator.
 "%ni%" <- Negate("%in%")
@@ -59,6 +59,7 @@ rivers <- ne_load(scale = 10, type = "rivers_lake_centerlines", destdir = "maps"
                                        "Stuart River", "South Thompson River")))
 
 # Above command misses the Canadian Okanagan, so I manually read that in.
+# Also the American side of it too (the Okanogan R). 
 okanagan <- st_read("ok_path.kml")      
 
 # Read in lake data downloaded from iMap BC.
@@ -100,7 +101,7 @@ lakes <- st_transform(st_read(dsn = "DBM_BC_7H_MIL_DRAINAGE_POLY"), crs = 4326) 
           panel.border = element_rect(color = "black", fill = NA),
           plot.margin = unit(c(0,0,0,0), "cm")) +
     geom_rect(aes(ymin = 40.01, ymax = 54.8, xmax = -153, xmin = -167.25),
-              colour = "black", fill = "white", alpha = 1/6, size = 1/20) +
+              colour = "black", fill = "white", alpha = 1/6, linewidth = 1/20) +
     geom_text(data = sites[sites$sitenum <= 30, ], aes(label = paste(sitenum, ". ", site), 
                                 x = -167, y = yv, hjust = 0), size = 2, inherit.aes = F) +
     geom_text(data = sites[sites$sitenum > 30, ], aes(label = paste(sitenum, ". ", site), 
@@ -109,127 +110,48 @@ lakes <- st_transform(st_read(dsn = "DBM_BC_7H_MIL_DRAINAGE_POLY"), crs = 4326) 
 
 ggsave("plots/bc_map.tiff", dpi = 300, width = 6, height = 6)
 
-# https://stackoverflow.com/questions/24801987/numbered-point-labels-plus-a-legend-in-a-scatterplot
 
 
-# # Overlay CU info --------------------------------------------------------------
-# 
-# # From: https://open.canada.ca/data/en/dataset/2f4bd945-f47e-47e3-9108-79f6ee39242c
-# # CUs <- st_transform(st_read(dsn = "Chinook_Salmon_CU_Boundary", 
-# #                     layer = "CK_CU_BOUNDARY_En")[,1], crs = 4326); plot(CUs)
-# 
-# (pnwCUs <- pnw +
-#     # geom_sf(data = CUs, 
-#     #         aes(fill = CU_NAME, alpha = 1/10),
-#     #         linewidth = 1/20, color = "black") +
-#     geom_point(data = sites, size = 1/2,
-#                aes(x = Longitude, y = Latitude)) +
-#     # Right-adjusted labels.
-#     geom_text_repel(data = sites[sites$site %in% c("Duteau", "Adams", 
-#                            "Seymour", "Blue", "Slim", "Swift", 
-#                            "Raft", "Cariboo", "Taseko", "Okanagan", 
-#                            "Spius", "Nahatlatch"),], 
-#                     size = 1.5,
-#                     min.segment.length = 0, 
-#                     max.overlaps = Inf, 
-#                     nudge_y = 2,
-#                     segment.size = 1/10,    
-#                     segment.alpha = 1/2, 
-#                     box.padding = 0.1,
-#                     hjust = 1, 
-#                     direction = "y", 
-#                     xlim = c(-117.5, NA),
-#                     aes(label = site, 
-#                         x = Longitude, 
-#                         y = Latitude)) +
-#     # Left-adjusted labels.
-#     geom_text_repel(data = sites[sites$site %in% c("Cowichan", "Phillips",
-#                            "Qualicum", "Nimpkish", "Sarita", "Kaouk",
-#                            "Moyeha", "San", "Klinaklini", "Serpentine"),], 
-#                     size = 1.5, 
-#                     box.padding = 0.15, 
-#                     min.segment.length = 0, 
-#                     max.overlaps = Inf, 
-#                     segment.size = 1/10,    
-#                     segment.alpha = 1/2,
-#                     hjust = 0, 
-#                     direction = "y", 
-#                     xlim = c(NA, -129),
-#                     nudge_y = -3,
-#                     aes(label = site, 
-#                         x = Longitude, 
-#                         y = Latitude)) +
-#     # South-central labels.
-#     geom_text_repel(data = sites[sites$site %in% c("Pitt", "Cheakamus", 
-#                            "Birkenhead", "Portage"),], 
-#                     size = 1.5, 
-#                     nudge_y = -2, 
-#                     box.padding = 0.25,
-#                     min.segment.length = 0, 
-#                     max.overlaps = Inf, 
-#                     segment.size = 1/10,    
-#                     segment.alpha = 1/2,
-#                     direction = "both", 
-#                     ylim = c(49, 45.2), 
-#                     xlim = c(-123, NA),
-#                     aes(label = site, 
-#                         x = Longitude, 
-#                         y = Latitude)) +
-#     # North/central coast left-aligned.
-#     geom_text_repel(data = sites[sites$site %in% c("Yakoun", "Dean", "Nusatsum", "Kitwanga",
-#                            "Kildala", "Ecstall", "Kitlope", "Kilbella", "Kitsumkalum", 
-#                            "Kincolith", "Kwinageese", "Tahltan", "Verrett", "Takhanne"),], 
-#                     size = 1.5, 
-#                     nudge_y = -0.10, 
-#                     box.padding = 0.1,
-#                     min.segment.length = 0, 
-#                     max.overlaps = Inf, 
-#                     segment.size = 1/10,    
-#                     segment.alpha = 1/2,
-#                     direction = "y", 
-#                     xlim = c(NA, -140),
-#                     ylim = c(NA, 59),
-#                     aes(label = site, 
-#                         x = Longitude, 
-#                         y = Latitude)) +
-#     # Northern pops. 
-#     geom_text_repel(data = sites[sites$site %in% c(
-#                                                    "Big", "Hoole", "Mayo",
-#                                                    "Nordenskiold", "Tincup", "Klondike",
-#                                                     "Takhini", "Salmon", 
-#                                                    "Tozitna", "Andreafsky", "Trinity", 
-#                                                    "Imnaha", "Abernathy", "Siuslaw"),],
-#                     size = 1.5, nudge_x = 0.2, min.segment.length = 0, 
-#                     max.overlaps = Inf, nudge_y = -0.1,
-#                     segment.size = 1/10,    
-#                     segment.alpha = 1/2,
-#                     aes(label = site, 
-#                         x = Longitude, 
-#                         y = Latitude)) +
-#     # Northern pops, aligned in BC center.
-#     geom_text_repel(data = sites[sites$site %in% c("Sustut", "Dudidontu", "Yeth", 
-#                                                    "Morley", "Endako"),],
-#                     size = 1.5, nudge_x = 0.2, min.segment.length = 0, 
-#                     hjust = 1, box.padding = 0.1,
-#                     direction = "y", 
-#                     xlim = c(-124.5, NA),
-#                     ylim = c(56, 60),
-#                     segment.size = 1/10,    
-#                     segment.alpha = 1/2,
-#                     aes(label = site, 
-#                         x = Longitude, 
-#                         y = Latitude)) +
-#     coord_sf(xlim = c(-115, -165), ylim = c(41, 66)) +
-#     theme_minimal() +
-#     theme(legend.position = "none", panel.grid = element_blank(),
-#           panel.background = element_rect(fill = alpha("skyblue", 1/10)),
-#           panel.border = element_rect(color = "black", fill = NA)))
-# 
-# 
-# ggsave("plots/CUmap.tiff", dpi = 300, width = 5, height = 5)
-# 
-# 
-# 
-# 
-# 
-# 
+# Inset ------------------------------------------------------------------------
+
+# Download low-res country outlines.
+ca <- map_data("world", "Canada")
+us <- map_data("world", "USA") 
+me <- map_data("world", "Mexico")
+
+# Make the inset plot by itself. 
+(ins <- ggplot() +
+    geom_polygon(data = us, aes(x = long, y = lat, group = group),
+                 fill = "grey80", colour = "black", linewidth = 1/8) +
+    geom_polygon(data = ca, aes(x = long, y = lat, group = group),
+                 fill = "grey90", colour = "black", linewidth = 1/8) +
+    geom_polygon(data = me, aes(x = long, y = lat, group = group),
+                 fill = "grey70", colour = "black", linewidth = 1/8) +
+    theme_void() +
+    theme(panel.border = element_rect(colour = "black", 
+                         fill = NA, linewidth = 1/4),
+          panel.background = element_rect(fill = "white"))  +
+    annotate("rect", fill = NA, colour = "black",
+             linewidth = 1/2,
+             xmin = -165, xmax = -115,
+             ymin = 41, ymax = 66) +
+    # Important to maintain accurate proportions/orientations. 
+    # Plot is cartesian otherwise and appears distorted.
+    coord_map(ylim = c(72, 20),
+              xlim = c(-57, -165)))
+
+
+# Add inset --------------------------------------------------------------------
+
+
+ggdraw(plot = pnw) +
+  draw_plot({
+    ins
+  },
+  x = 0.79,
+  y = 0.575,
+  width = 0.2,
+  height = 0.5)
+
+ggsave("plots/map_winset.tiff", dpi = 300, 
+       width = 6, height = 6)

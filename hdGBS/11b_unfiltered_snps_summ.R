@@ -7,7 +7,7 @@ library(tidyverse); library(ggplot2); library(ggExtra); library(cowplot)
 # SNP Depths -------------------------------------------------------------------
 ################################################################################
 
-SNPdepth <- read.table("./stats/out.ldepth.mean", header = T); colnames(SNPdepth)
+SNPdepth <- read.table("./stats/unfiltered_stats/out.ldepth.mean", header = T); colnames(SNPdepth)
 
 (mean_snp_depth <- summary(SNPdepth$MEAN_DEPTH))
 quantile(SNPdepth$MEAN_DEPTH, probs = c(0.1, 0.5, 0.9, 0.95, 0.99, 0.999, 0.9999))

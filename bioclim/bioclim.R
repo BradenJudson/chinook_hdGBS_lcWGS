@@ -7,7 +7,8 @@ library(raster)
 setwd("~/ots_landscape_genetics/bioclim")
 
 # Read in site information.
-sites <- read.delim("ch2023_sequenced.txt")[,c(4,8:9L)]
+sites <- read.delim("ch2023_sequenced.txt")[,c(4,8:9L)] %>% 
+  arrange((Latitude))
 
 
 # ------------------------------------------------------------------------------
@@ -140,39 +141,50 @@ sval <- as.data.frame(scale(ev)) %>%  # Make numeric too.
 
 # Retain PC scores and attach to each site.
 pop_climPC <- as.data.frame(prcomp(sval)$x) %>% 
-  mutate(pop = tools::toTitleCase(tolower(gsub("\\_.*", "", cbio$Site))))
+  mutate(pop = tools::toTitleCase(tolower(gsub("\\_.*", "", cbio$Site))),
+         Latitude = as.numeric(sites$Latitude))
 
-# Plot PC1 and PC2 biplot.
+
 ggplot(data = pop_climPC,
-       aes(x = PC1, y = PC2)) +
-  theme_bw() + 
-  geom_segment(data = loadings, 
-               # Expand 7-fold purely for visualization. 
-               aes(x = 0, xend = PC1 * 7, 
+       aes(x = PC1, y = PC2,
+       fill = Latitude)) + 
+  theme_bw() +
+  geom_segment(data = loadings,
+               # Expand 7-fold purely for visualization.
+               aes(x = 0, xend = PC1 * 7,
                    y = 0, yend = PC2 * 7,
                    color = rownames(loadings)),
+               inherit.aes = FALSE,
                arrow = arrow(length = unit(0.3, "cm"))) +
-  theme(legend.title = element_blank(),
-        legend.position = "top",
-        legend.margin = unit(-1, "cm")) +
-  guides(color = guide_legend(nrow = 1))  +
+  geom_point(shape = 21, size = 2)  +
+  scale_fill_gradient(low = "#F0FFFF", high = "#1874CD") +
+  labs(y = paste0("PC2 (", round(pc2ve*100, 1), "%)"),
+       x = paste0("PC1 (", round(pc1ve*100, 1), "%)")) +
   geom_label_repel(aes(label = pop), 
                    max.overlaps = Inf,
                    min.segment.length = 0,
                    box.padding = 1/3,
                    size = 1.7,
-                   segment.size = 1/5) +
-  geom_point(size = 2, shape = 21,
-             color = "black", fill = "gray80") +
-  labs(y = paste0("PC2 (", round(pc2ve*100, 1), "%)"),
-       x = paste0("PC1 (", round(pc1ve*100, 1), "%)")) 
+                   segment.size = 1/5,
+                   fill = "white") +
+  theme(legend.title = element_blank(),
+        legend.position = "top",
+        legend.box = "vertical",
+        legend.margin = margin(t = 0, unit = "cm")) +
+  guides(fill = guide_colourbar(barwidth = 25, label = F, ticks = F, frame.colour = "black"),
+         color = guide_legend(nrow = 1)) +
+  coord_cartesian(ylim = c(-4, 3.5), clip = "off") +
+  annotate("text", label = "North", x = -3.7, y = 4.4, hjust = 1) +
+  annotate("text", label = "South", x = 3.4, y = 4.4, hjust = -1)
+  
+
 
 ggsave("plots/envPCA.tiff", dpi = 300, width = 7, height = 7)
 
 
 # Migration harshness ----------------------------------------------------------
 
-# Sensu Moore et al. 2017; Molecular Ecology. 
+# Sensu Moore et al. 2017; DOI: 10.1111/mec.14393. 
 
 # Can measure KMLs using st_length. 
 # But most/all points are at the mouth of the respective body of water.

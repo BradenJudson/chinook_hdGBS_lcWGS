@@ -20,6 +20,8 @@ hdgl <- vcfR2genlight(hdgbs)
 # hd_sub_pca <- glPca(hdgl_sub, nf = 3, parallel = T, n.cores = 12)
 # write.csv(hd_sub_pca$scores, "hdgbs_sub_pcascores.csv", row.names = TRUE)
 
+pca_scores <- read.csv("hdgbs_sub_pcascores.csv") %>% 
+  column_to_rownames("X")
 
 # Isolate eigenvalues (% variation explained for each PC axis).
 (pc_var <- c(hd_sub_pca$eig/sum(hd_sub_pca$eig)*100)[1:5]); barplot(hd_pca$eig)
@@ -33,7 +35,7 @@ coords[coords$Population == "TAKHANNE_RIVER", "short"] <- "Takha"
 coords[coords$Population == "KILDALA_RIVER" , "short"] <- "Kild"
 
 # Isolate individual-based PCA vales and combine with geographical information.
-pc_scores <- as.data.frame(hd_sub_pca$scores) %>% 
+pc_scores <- as.data.frame(pca_scores) %>% 
   mutate(pop = gsub("-.*","", rownames(.))) %>% 
   merge(., coords, by.x = "pop", by.y = "short") %>% 
   arrange(desc(Latitude)) %>% # For ggplot colouring. 
@@ -43,8 +45,8 @@ pc_scores <- as.data.frame(hd_sub_pca$scores) %>%
 ggplot(data = pc_scores, 
        aes(x = PC1, y = PC2,  fill = factor(Latitude), group = pop)) +
   geom_point(shape = 21, size = 3/2) +
-  labs(x = paste0("PC1 (", round(pc_var[1], 1), "%)"),
-       y = paste0("PC2 (", round(pc_var[2], 1), "%)")) +
+  # labs(x = paste0("PC1 (", round(pc_var[1], 1), "%)"),
+  #      y = paste0("PC2 (", round(pc_var[2], 1), "%)")) +
   theme_bw() +
   theme(legend.title = element_blank(),
         legend.position = "right") +
