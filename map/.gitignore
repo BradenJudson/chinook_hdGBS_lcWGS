@@ -10,3 +10,5 @@
 *.shp.xml
 /maps
 /gadm
+*.kml
+DBM_BC_7H_MIL_DRAINAGE_POLY/

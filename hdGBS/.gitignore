@@ -15,3 +15,5 @@ HDplot.R
 *.ldepth.mean
 *.vcf
 *.vcf.gz
+fastqc/
+stats/

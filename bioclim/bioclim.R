@@ -156,8 +156,6 @@ ggplot(data = pop_climPC,
                    color = rownames(loadings)),
                inherit.aes = FALSE,
                arrow = arrow(length = unit(0.3, "cm"))) +
-  geom_point(shape = 21, size = 2)  +
-  scale_fill_gradient(low = "#F0FFFF", high = "#1874CD") +
   labs(y = paste0("PC2 (", round(pc2ve*100, 1), "%)"),
        x = paste0("PC1 (", round(pc1ve*100, 1), "%)")) +
   geom_label_repel(aes(label = pop), 
@@ -167,6 +165,8 @@ ggplot(data = pop_climPC,
                    size = 1.7,
                    segment.size = 1/5,
                    fill = "white") +
+  geom_point(shape = 21, size = 2)  +
+  scale_fill_gradient(low = "#F0FFFF", high = "#1874CD") +
   theme(legend.title = element_blank(),
         legend.position = "top",
         legend.box = "vertical",

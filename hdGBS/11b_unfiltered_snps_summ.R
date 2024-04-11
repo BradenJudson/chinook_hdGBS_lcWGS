@@ -13,6 +13,9 @@ SNPdepth <- read.table("./stats/unfiltered_stats/out.ldepth.mean", header = T); 
 quantile(SNPdepth$MEAN_DEPTH, probs = c(0.1, 0.5, 0.9, 0.95, 0.99, 0.999, 0.9999))
 nrow(SNPdepth[SNPdepth$MEAN_DEPTH > 100, ])
 
+# (rsd <- sd(SNPdepth$MEAN_DEPTH))
+# (dep_thr <- mean(SNPdepth$MEAN_DEPTH)+c(rsd*-1, rsd, rsd*2))
+
 DEPTHLT <- 3
 DEPTHUT <- 13
 
@@ -125,7 +128,7 @@ ggsave("./stats/genotype_filtering_2x2.tiff", width = 12, height = 8, dpi = 300)
 
 
 # Read in VCFtools output for missing data per individual. 
-depth <- read.table("./stats/out.idepth", header = T)
+depth <- read.table("./stats/unfiltered_stats/out.idepth", header = T)
 
 # Plot missing data histogram.
 ggplot(data = depth, aes(MEAN_DEPTH)) +
@@ -183,6 +186,10 @@ reads <- read.table(file = "stats/sample_reads.txt",
          pass = case_when(Reads >= Th ~ "Y",
                           Reads <  Th ~ "N"))
 
+# Merge population-level info with read data.
+sample_info <- read.csv("info_files/hdGBS_sampleinfo.csv") %>% 
+  merge(., reads, by = "Sample")
+
 # Summary stats by population.
 (pop_reads <- sample_info %>% 
     filter(pass == "Y") %>% 
@@ -194,11 +201,6 @@ reads <- read.table(file = "stats/sample_reads.txt",
               n    = n()))
 
 write.csv(reads, "stats/sample_reads.csv")
-
-# Merge population-level info with read data.
-sample_info <- read.csv("info_files/hdGBS_sampleinfo.csv") %>% 
-  merge(., reads, by = "Sample")
-
 
 (RP <- ggplot(data = sample_info, 
               aes(x = Population, y = Reads/1e6)) + 
@@ -224,7 +226,7 @@ sample_info <- read.csv("info_files/hdGBS_sampleinfo.csv") %>%
                    binwidth = 1/2, fill = "gray90", size = 10))
 
 # Use cowplot here to save multi-plot configuration more easily.
-save_plot("./stats/pop_reads.tiff", RPH, ncol = 2, base_height = 6)
+save_plot("./stats/pop_reads_1.tiff", RPH, ncol = 2, base_height = 6)
 
 (indv_readhist <- ggplot() +
   geom_histogram(data = sample_info[sample_info$pass == "Y", ], 
@@ -244,14 +246,3 @@ ind_fails <- sample_info[sample_info$pass == "N", "Sample"]
 write.table(ind_fails, "stats/ind_fails.txt", quote = FALSE, 
             row.names = FALSE, col.names = FALSE, sep = "\t")
 
-# # INDV Whitelist ---------------------------------------------------------------
-# 
-# (indv_stats <- (rbind(mean_depth, indv_miss_n, indv_miss_p)))
-# write.csv(indv_stats, "./stats/indv_stats.csv")
-# 
-# # Identify unique individuals passing both i) depth, and ii) missingness criteria.
-# indwl <- unique(depth.keep, ind.miss.keep)
-# 
-# # Write as a plain textfile for filtering via VCFtools.
-# write.table(depth.keep, "./filters/indvs.txt", quote = FALSE, 
-#             row.names = FALSE, col.names = FALSE)

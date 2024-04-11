@@ -31,7 +31,7 @@ bcn <- prov[prov$NAME_1 %in% c("Alberta", "Yukon", "Northwest Territories", "Nun
 bch <- st_transform(bc_bound_hres(), crs = 4326)
 
 # Read in site information and reformat labels.
-sites <- read.delim(file = "ch2023_sequenced.txt") %>% 
+sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>% 
   arrange(Latitude) %>% 
   mutate(site = tools::toTitleCase(tolower(gsub("\\_.*", "", Population))),
          sitenum = as.numeric(rownames(.)))
@@ -108,10 +108,6 @@ lakes <- st_transform(st_read(dsn = "DBM_BC_7H_MIL_DRAINAGE_POLY"), crs = 4326) 
                                 x = -160, y = yv, hjust = 0), size = 2, inherit.aes = F))
 
 
-ggsave("plots/bc_map.tiff", dpi = 300, width = 6, height = 6)
-
-
-
 # Inset ------------------------------------------------------------------------
 
 # Download low-res country outlines.
@@ -153,5 +149,5 @@ ggdraw(plot = pnw) +
   width = 0.2,
   height = 0.5)
 
-ggsave("plots/map_winset.tiff", dpi = 300, 
+ggsave("../plots/map_winset.tiff", dpi = 300, 
        width = 6, height = 6)
