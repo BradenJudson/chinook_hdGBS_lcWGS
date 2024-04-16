@@ -1,6 +1,6 @@
 setwd("~/ots_landscape_genetics/comp")
 
-library(tidyverse); library(ggpmisc)
+library(tidyverse); library(ggpmisc); library(ggridges)
 
 hdgbs_reads <- read.table("../hdGBS/stats/unfiltered_stats/indv_reads.txt",
                           sep = "") %>% 
@@ -88,28 +88,32 @@ ggsave("../plots/read_dists.tiff", dpi = 300,
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90,
                                    vjust = 0.5, 
-                                   hjust = 1)) +
+                                   hjust = 1),
+        axis.text = element_text(size = 12),
+        strip.text = element_text(size = 14)) +
   labs(x = NULL, y = "Reads (millions)"))
 
 ggsave("../plots/read_boxplots.tiff", dpi = 300,
        height = 10, width = 14)
 
+
 (hi <- ggplot(data = lf, 
-              aes(x = reads/1e6)) +
+              aes(y = reads/1e6)) +
     geom_histogram(colour = "black",
                    fill = "gray80",
                    bins = 100) +
-    theme_bw() +
-    facet_wrap(~lab, ncol = 1) +
+    theme_void() +
+    facet_wrap(~lab, ncol = 1,) + 
+    theme(strip.text = element_blank()) +
     scale_y_continuous(position = "right") +
     labs(x = "Reads (millions)", y = "Count") +
     scale_x_continuous(breaks = seq(0, 120, 20))) 
 
 
-cowplot::plot_grid(bp, hi, align = "VH", ncol = 2, rel_widths = c(1, 0.8))
+cowplot::plot_grid(bp, hi, align = "VH", ncol = 2, rel_widths = c(1, 0.1))
 
 ggsave("../plots/read_plots.tiff", dpi = 300,
-       height = 12, width = 16)
+       height = 10, width = 12)
 
 
 

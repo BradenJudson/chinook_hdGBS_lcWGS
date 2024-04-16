@@ -1,11 +1,55 @@
 setwd("~/ots_landscape_genetics/pop_gen")
 
 library(tidyverse); library(vcfR); library(ggplot2); library(adegenet)
-library(viridis)
+library(viridis); library(poppr); library(hierfstat)
 
 # Read in genetic data and convert to genlight object.
 hdgbs <- read.vcfR("../data/hdgbs_snps_maf2_m60.vcf.gz")
 hdgl <- vcfR2genlight(hdgbs)
+
+
+# Part I: Genetic diversity ----------------------------------------------------
+
+# Isolate sample names.
+samples <- as.factor(c(colnames(hdgbs@gt[,c(2:ncol(hdgbs@gt))])))
+
+# Read in sample and population info. Arrange accordingly. 
+indvs <- read.csv("../data/landgen_chinook_indvs.csv", na.strings = "") %>% 
+  filter(fish_ID %in% c(colnames(hdgbs@gt[,c(2:ncol(hdgbs@gt))]))) %>% 
+  arrange(factor(fish_ID, levels = samples))
+
+# Fix one sample label for consistency (HarB == Har).
+indvs[indvs$site_full == "Harrison Brood", "site_full"] <- "Harrison"
+# ^ Are Harrison and Harrison Brood different? Doubt it but check w/ TH. 
+
+# c(colnames(hdgbs@gt))[c(colnames(hdgbs@gt)) %ni% indvs$fish_ID]
+# ^ Use this to check samples when pipeline is finished.
+
+# Assign population factor.
+hdgl@pop <- as.factor(indvs$site_full)
+
+# Calculate genetic diversity summary stats.
+snp_div <- dartR::gl.basic.stats(hdgl) # Takes a while.
+
+# Isolate population level diversity stats.
+pop_div <- data.frame(
+  Ho  = round(apply(snp_div$Ho,  MARGIN = 2, FUN = mean, na.rm = T), 4),
+  He  = round(apply(snp_div$Ho,  MARGIN = 2, FUN = mean, na.rm = T), 4),
+  Fis = round(apply(snp_div$Fis, MARGIN = 2, FUN = mean, na.rm = T), 4)
+) %>% rownames_to_column(var = "Sample")
+
+rm(snp_div); gc() # Clear up memory
+# per-SNP info takes up a lot of space that we don't need here. 
+
+write.csv(pop_div, "../data/pop_snp_div.csv", row.names = FALSE)
+
+
+# Part II: Population structure ------------------------------------------------
+
+
+## NEEDS REDOING/REFINEMENT ONCE THE PIPELINE IS FINISHED ##
+
+
 
 # hdgl_sub <- gl.drop.ind(hdgl)
 
@@ -14,7 +58,8 @@ hdgl <- vcfR2genlight(hdgbs)
 
 # write.csv(hd_pca$scores, "hdgbs_pcascores.csv", row.names = TRUE)
 
-#"%ni%" <- Negate("%in%")
+
+"%ni%" <- Negate("%in%")
 # drop_indvs <- rownames(pc_scores[pc_scores$PC1 > 50, ])
 # hdgl_sub <- hdgl[indNames(hdgl) %ni% drop_indvs]
 # hd_sub_pca <- glPca(hdgl_sub, nf = 3, parallel = T, n.cores = 12)
@@ -57,10 +102,6 @@ ggplot(data = pc_scores,
 ggsave("plots/pca_fillscale.tiff", dpi = 300, width = 8, height = 5)
 
 
-
-################################################################################
-
-
-
+# ------------------------------------------------------------------------------
 
 

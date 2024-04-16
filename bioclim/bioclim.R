@@ -110,7 +110,7 @@ ggplot(data = biovar %>%
   guides(fill = guide_legend(title = "Shared Socio-economic Pathway"))
 
 
-ggsave("plots/clim_ts.tiff", dpi = 300, width = 10, height = 6)
+ggsave("../plots/clim_ts.tiff", dpi = 300, width = 10, height = 6)
 
 
 # Scaling and autocorrelation --------------------------------------------------
@@ -151,8 +151,8 @@ ggplot(data = pop_climPC,
   theme_bw() +
   geom_segment(data = loadings,
                # Expand 7-fold purely for visualization.
-               aes(x = 0, xend = PC1 * 7,
-                   y = 0, yend = PC2 * 7,
+               aes(x = 0, xend = PC1 * 6,
+                   y = 0, yend = PC2 * 6,
                    color = rownames(loadings)),
                inherit.aes = FALSE,
                arrow = arrow(length = unit(0.3, "cm"))) +
@@ -171,15 +171,17 @@ ggplot(data = pop_climPC,
         legend.position = "top",
         legend.box = "vertical",
         legend.margin = margin(t = 0, unit = "cm")) +
-  guides(fill = guide_colourbar(barwidth = 25, label = F, ticks = F, frame.colour = "black"),
+  guides(fill = guide_colourbar(barwidth = 25, label = F, 
+                                ticks = F, frame.colour = "black",
+                                reverse = T),
          color = guide_legend(nrow = 1)) +
   coord_cartesian(ylim = c(-4, 3.5), clip = "off") +
-  annotate("text", label = "North", x = -3.7, y = 4.4, hjust = 1) +
-  annotate("text", label = "South", x = 3.4, y = 4.4, hjust = -1)
+  annotate("text", label = "North", x = -3.9, y = 4.4, hjust = 1) +
+  annotate("text", label = "South", x = 3.3, y = 4.4, hjust = -1)
   
 
 
-ggsave("plots/envPCA.tiff", dpi = 300, width = 7, height = 7)
+ggsave("../plots/envPCA.tiff", dpi = 300, width = 7, height = 7)
 
 
 # Migration harshness ----------------------------------------------------------
@@ -213,5 +215,5 @@ ggplot(data = elev,
   theme_bw() +
   theme(axis.text.x = element_text(angle = 40, hjust = 0.9))
 
-ggsave("plots/elevations.tiff", dpi = 300, width = 10, height = 5)
+ggsave("../plots/elevations.tiff", dpi = 300, width = 10, height = 5)
 

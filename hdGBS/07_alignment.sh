@@ -20,9 +20,7 @@ ALIGNFOLDER="05_alignment"
 
 
 # Source conda environment.
-source ~/miniconda3/etc/profile.d/conda.sh
-cd /gpfs/fs7/grdi/genarcc/wp3/judsonb/chinook_hdGBS
-conda activate ../hdgbs_env
+source ~/.profile
 
 
 for file in $(ls -1 "$DATAFOLDER"/*.1.fq.gz)
@@ -41,6 +39,6 @@ do
         samtools sort --threads "$NCPU" -o "$ALIGNFOLDER"/"${name%.fq.gz}".sorted.bam \
                 "$ALIGNFOLDER"/"${name%.fq.gz}".bam
 
-        samtools index "$ALIGNFOLDER"/"${name%.fq.gz}".bam
+        samtools index "$ALIGNFOLDER"/"${name%.fq.gz}".sorted.bam
 
 done
