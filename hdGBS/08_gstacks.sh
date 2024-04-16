@@ -10,9 +10,7 @@
 #SBATCH --account=grdi_genarcc
 
 # Source conda environment.
-source ~/miniconda3/etc/profile.d/conda.sh
-cd /gpfs/fs7/grdi/genarcc/wp3/judsonb/chinook_hdGBS
-conda activate ../hdgbs_env
+source ~/.profile
 
 STACKS_FOLDER="06_stacks"
 SAMPLE_FOLDER="05_alignment"
@@ -22,5 +20,4 @@ POP_MAP="population_map_filt.txt"
 gstacks -I "$SAMPLE_FOLDER" -S ".1.sorted.bam" \
         -M "$INFO_FILES"/"$POP_MAP" \
         -O "$STACKS_FOLDER" \
-        --max-clipped 0.1 \
-        --rm-pcr-duplicates
+        --max-clipped 0.1

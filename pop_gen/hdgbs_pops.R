@@ -3,10 +3,11 @@ setwd("~/ots_landscape_genetics/pop_gen")
 library(tidyverse); library(vcfR); library(ggplot2); library(adegenet)
 library(viridis); library(poppr); library(hierfstat)
 
+nc <- 12 # Number of cores to use in parallel functions.
+
 # Read in genetic data and convert to genlight object.
 hdgbs <- read.vcfR("../data/hdgbs_snps_maf2_m60.vcf.gz")
 hdgl <- vcfR2genlight(hdgbs)
-
 
 # Part I: Genetic diversity ----------------------------------------------------
 
@@ -47,6 +48,7 @@ write.csv(pop_div, "../data/pop_snp_div.csv", row.names = FALSE)
 # Part II: Population structure ------------------------------------------------
 
 
+
 ## NEEDS REDOING/REFINEMENT ONCE THE PIPELINE IS FINISHED ##
 
 
@@ -59,7 +61,6 @@ write.csv(pop_div, "../data/pop_snp_div.csv", row.names = FALSE)
 # write.csv(hd_pca$scores, "hdgbs_pcascores.csv", row.names = TRUE)
 
 
-"%ni%" <- Negate("%in%")
 # drop_indvs <- rownames(pc_scores[pc_scores$PC1 > 50, ])
 # hdgl_sub <- hdgl[indNames(hdgl) %ni% drop_indvs]
 # hd_sub_pca <- glPca(hdgl_sub, nf = 3, parallel = T, n.cores = 12)
@@ -103,5 +104,44 @@ ggsave("plots/pca_fillscale.tiff", dpi = 300, width = 8, height = 5)
 
 
 # ------------------------------------------------------------------------------
+
+# Compute pairwise Fst values. Takes a while. Save locally.
+gendist <- dartR::gl.fst.pop(hdgl, nclusters = nc)
+write.csv(gendist, "../data/fst_matrix.csv", row.names = T)
+
+# Convert to long formfor plotting purposes. 
+gdlf <- gendist %>% 
+  as.data.frame(row.names = c(rownames(gendist))) %>% 
+  rownames_to_column("Var1") %>% 
+  pivot_longer(-Var1, names_to = "Var2", values_to = "Value") %>% 
+  mutate(Var1 = factor(Var1, levels = unique(rownames(gendist))), 
+         Var2 = factor(Var2, levels = unique(rownames(gendist)))) %>% 
+  filter(!is.na(Value))
+
+# Plot pairwise FST heat map. 
+ggplot(data = gdlf, aes(Var1, Var2)) +
+  geom_tile(aes(fill = Value), colour = "grey80") +
+  scale_fill_gradient(low = "skyblue1", high = "royalblue3") +
+  theme_bw() + labs(x = NULL, y = NULL, 
+                    fill = expression(paste(F[ST]))) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        legend.position = c(1/10, 17/20),
+        legend.box.background = element_rect(colour = "black", fill = "white")) +
+  guides(fill = guide_colorbar(frame.colour = "black", ticks.colour = "black"))
+
+ggsave("../plots/fst_heatmap.tiff", dpi = 300,
+       width = 7, height = 7)
+
+# FST summary.
+summary(gdlf$Value)
+hist(gdlf$Value, breaks = nrow(gendist), main = NULL, xlab = "FST")
+
+
+
+# NJTree -----------------------------------------------------------------------
+
+library(ape)
+nj <- dartR::gl.tree.nj(x = hdgl)
+plot(ape::unroot(nj), type = "unrooted", cex = 1, edge.width = 2, lab4ut = "axial")
 
 
