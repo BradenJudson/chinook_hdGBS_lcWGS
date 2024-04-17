@@ -9,9 +9,16 @@ nc <- 12 # Number of cores to use in parallel functions.
 hdgbs <- read.vcfR("../data/hdgbs_snps_maf2_m60.vcf.gz")
 hdgl <- vcfR2genlight(hdgbs)
 
-# Part I: Genetic diversity ----------------------------------------------------
+# Indv and pop info ------------------------------------------------------------
 
-# Isolate sample names.
+sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>% 
+  arrange(Latitude) %>% 
+  mutate(site = tools::toTitleCase(tolower(gsub("\\_.*", "", Population))),
+         sitenum = as.numeric(rownames(.)))
+sites[sites$site == "San", "site"] <- "San Juan"
+sites[sites$site == "Salmon", "site"] <- "Salmon Fork"
+sites[sites$site == "Big", "site"] <- "Big Salmon"
+
 samples <- as.factor(c(colnames(hdgbs@gt[,c(2:ncol(hdgbs@gt))])))
 
 # Read in sample and population info. Arrange accordingly. 
@@ -19,7 +26,11 @@ indvs <- read.csv("../data/landgen_chinook_indvs.csv", na.strings = "") %>%
   filter(fish_ID %in% c(colnames(hdgbs@gt[,c(2:ncol(hdgbs@gt))]))) %>% 
   arrange(factor(fish_ID, levels = samples))
 
-# Fix one sample label for consistency (HarB == Har).
+# Rename some samples for consistent labeling downstream.
+indvs[indvs$site_full == "Big Qualicum Brood", "site_full"] <- "Qualicum"
+indvs[indvs$site_full == "Serpentine Brood", "site_full"] <- "Serpentine"
+indvs[indvs$site_full == "Upper Pitt", "site_full"] <- "Pitt"
+indvs[indvs$site_full == "Spius Brood", "site_full"] <- "Spius"
 indvs[indvs$site_full == "Harrison Brood", "site_full"] <- "Harrison"
 # ^ Are Harrison and Harrison Brood different? Doubt it but check w/ TH. 
 
@@ -28,6 +39,13 @@ indvs[indvs$site_full == "Harrison Brood", "site_full"] <- "Harrison"
 
 # Assign population factor.
 hdgl@pop <- as.factor(indvs$site_full)
+
+hdgl <- dartR::gl.sort(x = hdgl, order.by = c(sites$site))
+
+# Part I: Genetic diversity ----------------------------------------------------
+
+# Isolate sample names.
+
 
 # Calculate genetic diversity summary stats.
 snp_div <- dartR::gl.basic.stats(hdgl) # Takes a while.
@@ -47,11 +65,7 @@ write.csv(pop_div, "../data/pop_snp_div.csv", row.names = FALSE)
 
 # Part II: Population structure ------------------------------------------------
 
-
-
-## NEEDS REDOING/REFINEMENT ONCE THE PIPELINE IS FINISHED ##
-
-
+# NEEDS REDOING/REFINEMENT ONCE THE PIPELINE IS FINISHED ##
 
 # hdgl_sub <- gl.drop.ind(hdgl)
 
@@ -59,7 +73,6 @@ write.csv(pop_div, "../data/pop_snp_div.csv", row.names = FALSE)
 # hd_pca <- glPca(hdgl, nf = 3, parallel = T, n.cores = 12)
 
 # write.csv(hd_pca$scores, "hdgbs_pcascores.csv", row.names = TRUE)
-
 
 # drop_indvs <- rownames(pc_scores[pc_scores$PC1 > 50, ])
 # hdgl_sub <- hdgl[indNames(hdgl) %ni% drop_indvs]
@@ -108,25 +121,29 @@ ggsave("plots/pca_fillscale.tiff", dpi = 300, width = 8, height = 5)
 # Compute pairwise Fst values. Takes a while. Save locally.
 gendist <- dartR::gl.fst.pop(hdgl, nclusters = nc)
 write.csv(gendist, "../data/fst_matrix.csv", row.names = T)
+# gendist <- read.csv("../data/fst_matrix.csv", row.names = 1)
+
 
 # Convert to long formfor plotting purposes. 
 gdlf <- gendist %>% 
-  as.data.frame(row.names = c(rownames(gendist))) %>% 
+  as.data.frame(row.names = c(rownames(.))) %>% 
   rownames_to_column("Var1") %>% 
   pivot_longer(-Var1, names_to = "Var2", values_to = "Value") %>% 
-  mutate(Var1 = factor(Var1, levels = unique(rownames(gendist))), 
-         Var2 = factor(Var2, levels = unique(rownames(gendist)))) %>% 
-  filter(!is.na(Value))
+  mutate(Var1 = factor(Var1, levels = rownames(gendist)), 
+         Var2 = factor(Var2, levels = rownames(gendist))) %>% 
+  filter(!is.na(Value) & !is.na(Var2))
 
 # Plot pairwise FST heat map. 
 ggplot(data = gdlf, aes(Var1, Var2)) +
   geom_tile(aes(fill = Value), colour = "grey80") +
-  scale_fill_gradient(low = "skyblue1", high = "royalblue3") +
+  scale_fill_gradient(low = "#12C7EB5E", high = "#0F37D6D8") +
   theme_bw() + labs(x = NULL, y = NULL, 
                     fill = expression(paste(F[ST]))) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 1/5),
+        axis.text   = element_text(size = 7),
         legend.position = c(1/10, 17/20),
-        legend.box.background = element_rect(colour = "black", fill = "white")) +
+        legend.box.background = element_rect(colour = "black", fill = "white"),
+        panel.grid = element_line(colour = "gray97")) +
   guides(fill = guide_colorbar(frame.colour = "black", ticks.colour = "black"))
 
 ggsave("../plots/fst_heatmap.tiff", dpi = 300,
@@ -144,4 +161,6 @@ library(ape)
 nj <- dartR::gl.tree.nj(x = hdgl)
 plot(ape::unroot(nj), type = "unrooted", cex = 1, edge.width = 2, lab4ut = "axial")
 
+# Struc ------------------------------------------------------------------------
 
+ncl <- find.clusters.genlight(hdgl)
