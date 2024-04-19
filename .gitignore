@@ -6,3 +6,8 @@
 *.vcf.gz
 *.tiff
 writing/
+**.removed
+**.vcfsnp
+**.geno
+data/hdgbs_snps_maf2_m60.snmf/
+**.snmfProject

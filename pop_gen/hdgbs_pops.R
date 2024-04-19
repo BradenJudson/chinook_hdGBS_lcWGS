@@ -1,15 +1,16 @@
 setwd("~/ots_landscape_genetics/pop_gen")
 
 library(tidyverse); library(vcfR); library(ggplot2); library(adegenet)
-library(viridis); library(poppr); library(hierfstat)
+library(viridis); library(poppr); library(hierfstat); library(R.utils)
 
 nc <- 12 # Number of cores to use in parallel functions.
 
 # Read in genetic data and convert to genlight object.
-hdgbs <- read.vcfR("../data/hdgbs_snps_maf2_m60.vcf.gz")
+gunzip("../data/hdgbs_snps_maf2_m60.vcf.gz")
+hdgbs <- read.vcfR("../data/hdgbs_snps_maf2_m60.vcf")
 hdgl <- vcfR2genlight(hdgbs)
 
-# Indv and pop info ------------------------------------------------------------
+# Part I: Indv and pop info ----------------------------------------------------
 
 sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>% 
   arrange(Latitude) %>% 
@@ -42,10 +43,7 @@ hdgl@pop <- as.factor(indvs$site_full)
 
 hdgl <- dartR::gl.sort(x = hdgl, order.by = c(sites$site))
 
-# Part I: Genetic diversity ----------------------------------------------------
-
-# Isolate sample names.
-
+# Part 2: Genetic diversity ----------------------------------------------------
 
 # Calculate genetic diversity summary stats.
 snp_div <- dartR::gl.basic.stats(hdgl) # Takes a while.
@@ -62,8 +60,10 @@ rm(snp_div); gc() # Clear up memory
 
 write.csv(pop_div, "../data/pop_snp_div.csv", row.names = FALSE)
 
+#### Use pixy to est. nucleotide div. and diff. see https://pixy.readthedocs.io/en/latest/index.html ####
+# Need WSL approval?
 
-# Part II: Population structure ------------------------------------------------
+# Part 3a: Population structure via PCA ----------------------------------------
 
 # NEEDS REDOING/REFINEMENT ONCE THE PIPELINE IS FINISHED ##
 
@@ -71,6 +71,10 @@ write.csv(pop_div, "../data/pop_snp_div.csv", row.names = FALSE)
 
 # Takes a few hours.
 # hd_pca <- glPca(hdgl, nf = 3, parallel = T, n.cores = 12)
+
+# Include glPCA object from earlier to decrease computation time.
+# ncl <- find.clusters.genlight(hdgl, glPca = hd_sub_pca,
+#                               max.n.clust = length(unique(hdgl@pop))/3)
 
 # write.csv(hd_pca$scores, "hdgbs_pcascores.csv", row.names = TRUE)
 
@@ -116,7 +120,59 @@ ggplot(data = pc_scores,
 ggsave("plots/pca_fillscale.tiff", dpi = 300, width = 8, height = 5)
 
 
-# ------------------------------------------------------------------------------
+# Part 3b: Population structure via sNMF ---------------------------------------
+
+
+# Heavily inspired by Connor French's 2020 population genetics guide:
+# https://connor-french.github.io/intro-pop-structure-r/
+
+library(LEA)
+
+gunzip("../data/hdgbs_snps_maf2_m60.vcf.gz")
+LEA::vcf2geno(input.file  = "../data/hdgbs_snps_maf2_m60.vcf",
+              output.file = "../data/hdgbs_snps_maf2_m60.geno")
+
+maxK <- 10; rep <- 5
+
+# Commented out! Only run this first time around, otherwise it overwrites and takes forever.
+# ch_admix <- snmf(input.file = "../data/hdgbs_snps_maf2_m60.geno",
+#                  entropy = TRUE, repetitions = rep, # Uses cross-entropy criterion for each repetition of K. 
+#                  project = "new", K = 1:maxK,       # Use new project and test across 1-10 clusters.
+#                  ploidy  = 2, CPU = nc,             # Use 12 cores and specify diploid genome.
+#                  I = 3e2, seed = 240)               # Seed is my office number. Initialize with 3k SNPs.
+
+# For future runs, just read in the project. 
+ch_admix <- load.snmfProject("../data/hdgbs_snps_maf2_m60.snmfProject")
+
+################ Adjust I above to something reasonable ########################
+
+plot(ch_admix, pch = 19)
+
+# Generate an empty dataframe for populating.
+snmf_vals <- as.matrix.data.frame(matrix(NA, ncol = maxK, nrow = rep)) %>% 
+  `rownames<-`(., c(paste0("Run", seq(1, rep, 1)))) %>% 
+  `colnames<-`(., c(paste0("K", seq(1, maxK, 1))))
+
+# Populate above DF with CE values of each K value and each run. 
+for (i in c(1:maxK)) {
+  CE <- c(cross.entropy(ch_admix, K = i))
+  snmf_vals[,i] <- CE
+}
+
+# Determine optimum run and K value.
+(opt_snmf <- which(snmf_vals == min(snmf_vals), arr.ind = T) %>% 
+    as.data.frame() %>% `colnames<-`(., c("run", "K")))
+paste("Optimum is K =", opt_snmf[2], "and run", opt_snmf[1])
+
+qmat <- as.data.frame(LEA::Q(ch_admix, K = as.numeric(opt_snmf$K), 
+                             run = as.numeric(opt_snmf$run))) %>% 
+  mutate(fish = hdgl@ind.names) %>% relocate(fish, .before = "V1") %>% 
+  `colnames<-`(., c("fish", paste0("K", seq(1:as.numeric(opt_snmf$K)))))
+
+
+
+# Part 4: Genetic differentiation ----------------------------------------------
+
 
 # Compute pairwise Fst values. Takes a while. Save locally.
 gendist <- dartR::gl.fst.pop(hdgl, nclusters = nc)
@@ -155,12 +211,9 @@ hist(gdlf$Value, breaks = nrow(gendist), main = NULL, xlab = "FST")
 
 
 
-# NJTree -----------------------------------------------------------------------
+# Part 5: NJTree ---------------------------------------------------------------
 
 library(ape)
 nj <- dartR::gl.tree.nj(x = hdgl)
 plot(ape::unroot(nj), type = "unrooted", cex = 1, edge.width = 2, lab4ut = "axial")
 
-# Struc ------------------------------------------------------------------------
-
-ncl <- find.clusters.genlight(hdgl)
