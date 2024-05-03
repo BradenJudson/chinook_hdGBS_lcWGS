@@ -21,25 +21,23 @@ hist(dat$reads, breaks = 100, main = NULL, xlab = "Reads")
 
 write.csv(dat[,c(1:2)], "lcwgs_indv_reads.csv", row.names = F)
 
-ites <- read.delim(file = "../../data/ch2023_sequenced.txt") %>% 
+sites <- read.delim(file = "../../data/ch2023_sequenced.txt") %>% 
   arrange(Latitude) %>% 
   mutate(site = tools::toTitleCase(tolower(gsub("\\_.*", "", Population))),
          sitenum = as.numeric(rownames(.)),
-         abb = tools::toTitleCase(str_sub(start = 0, end = 3, site))) %>% 
-  select(c(12, 10))
+         abb = tools::toTitleCase(str_sub(start = 0, end = 3, site)))
 
 fd <- merge(dat, sites, by = "abb") %>% select(!c("abb"))
 
 ggplot(data = fd, aes(x = site, y = reads/1e6)) + 
-  geom_boxplot(alpha = 1/10) +
-  geom_point(size  = 3/2, 
-             shape = 21,
-             color = "black",
-             fill = "grey90") +
-  theme_bw() +
+  geom_hline(yintercept = 20, linetype = 2, colour = "red") +
+  geom_boxplot(alpha = 1/10) +  theme_bw() +
+  geom_point(size  = 3/2, shape = 21,
+             color = "black", fill = "grey90") +
   theme(axis.text.x = element_text(angle = 90,
-                                   vjust = 0.5, hjust = 1),
+                      vjust = 0.5, hjust = 1),
         legend.position = "none") +
   labs(x = NULL, y = "Reads (millions)")
 
 ggsave("../../plots/lcwgs_indv_reads.tiff", dpi = 300, height = 7, width = 12)
+

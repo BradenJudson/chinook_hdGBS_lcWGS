@@ -7,30 +7,26 @@ library(tidyverse); library(ggplot2); library(ggExtra); library(cowplot)
 # SNP Depths -------------------------------------------------------------------
 ################################################################################
 
-SNPdepth <- read.table("./stats/unfiltered_stats/out.ldepth.mean", header = T); colnames(SNPdepth)
+SNPdepth <- read.table("./stats/unfiltered_stats_complete/out.ldepth.mean", header = T); colnames(SNPdepth)
 
-(mean_snp_depth <- summary(SNPdepth$MEAN_DEPTH))
+(mean_snp_depth <- summary(SNPdepth$MEAN_DEPTH)); sd(SNPdepth$MEAN_DEPTH)
 quantile(SNPdepth$MEAN_DEPTH, probs = c(0.1, 0.5, 0.9, 0.95, 0.99, 0.999, 0.9999))
 nrow(SNPdepth[SNPdepth$MEAN_DEPTH > 100, ])
 
 # (rsd <- sd(SNPdepth$MEAN_DEPTH))
 # (dep_thr <- mean(SNPdepth$MEAN_DEPTH)+c(rsd*-1, rsd, rsd*2))
 
-DEPTHLT <- 3
-DEPTHUT <- 13
-
-SNPdepth$filter <- case_when(SNPdepth$MEAN_DEPTH <  DEPTHLT | SNPdepth$MEAN_DEPTH >  DEPTHUT ~ "F",
-                             SNPdepth$MEAN_DEPTH >= DEPTHLT | SNPdepth$MEAN_DEPTH <= DEPTHUT ~ "P")
+# DEPTHLT <- 3
+# DEPTHUT <- 13
+# 
+# SNPdepth$filter <- case_when(SNPdepth$MEAN_DEPTH <  DEPTHLT | SNPdepth$MEAN_DEPTH >  DEPTHUT ~ "F",
+#                              SNPdepth$MEAN_DEPTH >= DEPTHLT | SNPdepth$MEAN_DEPTH <= DEPTHUT ~ "P")
 
 (snp_depthhist <- ggplot() +
-  geom_histogram(data = SNPdepth[SNPdepth$filter == "P",],
+  geom_histogram(data = SNPdepth,
                  aes(MEAN_DEPTH), bins = 150, 
                  color = "black", fill = "gray80") +
-    geom_histogram(data = SNPdepth[SNPdepth$filter == "F",],
-                   aes(MEAN_DEPTH), bins = 150, 
-                   color = "gray90", fill = "gray99") +
-  scale_x_continuous(breaks = seq(0, 13, 2)) +
-  theme_bw() + xlim(0, 13) +
+  theme_bw() + xlim(3, 30) +
   geom_vline(xintercept = DEPTHLT, color = "red") +
   labs(x = "Mean SNP depth", y = "Frequency"))
 
@@ -41,7 +37,7 @@ SNP_d3 <- SNPdepth[SNPdepth$MEAN_DEPTH >= 3 & SNPdepth$MEAN_DEPTH < 100, ]
 
 # SNP Missingness --------------------------------------------------------------
 
-SNPmiss <- read.table("./stats/out.lmiss", header = T)
+SNPmiss <- read.table("./stats/unfiltered_stats_complete/out.lmiss", header = T)
 
 
 MISST <- 4/10
@@ -51,13 +47,9 @@ SNPmiss$filter <- case_when(SNPmiss$F_MISS >= MISST ~ "F",
 (snp_miss_summ <- summary(SNPmiss$F_MISS))
 
 (snp_misshist <- ggplot() +
-    geom_histogram(data = SNPmiss[SNPmiss$filter == "P", ], 
-                   aes(F_MISS), bins = 150, color = "black", 
-                   fill = "gray80") +
-    geom_histogram(data = SNPmiss[SNPmiss$filter == "F", ], 
-                   aes(F_MISS), bins = 150, color = "gray90", 
-                   fill = "gray99") +
-    geom_vline(xintercept = MISST, color = "red") +
+    geom_histogram(data = SNPmiss, 
+                   aes(F_MISS), bins = 180, color = "black", 
+                   fill = "gray80")  +
     labs(x = "SNP Missingness (%)", y = "Frequency") +
     theme_bw())
 
@@ -69,7 +61,7 @@ SNP_lowmiss <- SNPmiss[SNPmiss$F_MISS < 0.4, ]; nrow(SNP_lowmiss)
 
 # MAF --------------------------------------------------------------------------
 
-SNPhet <- read.table("./stats/out.frq", header = T, row.names = NULL) %>% 
+SNPhet <- read.table("./stats/unfiltered_stats_complete/out.frq", header = T, row.names = NULL) %>% 
   `colnames<-`(., c("CHROM", "POS", "NALLELES", "N_CHR", "MajAll", "MinAll")) %>% 
   mutate(MAF = as.numeric(sub(".*:", "", MinAll)))
 
@@ -82,12 +74,11 @@ SNPhet$filter <- case_when(SNPhet$MAF >= MAFT ~ "P",
 (maf_summ <- summary(SNPhet$MAF))
 
 (mafhist <- ggplot() +
-    geom_histogram(data = SNPhet[SNPhet$filter == "P", ], aes(MAF),
+    geom_histogram(data = SNPhet, aes(MAF),
                    bins = 250, color = "black", fill = "gray80") +
-    geom_histogram(data = SNPhet[SNPhet$filter == "F", ], aes(MAF),
-                   bins = 250, color = "gray90", fill = "gray99") +
     labs(x = "Minor Allele Frequency", y = "Frequency") +
     geom_vline(xintercept = MAFT, color = "red") +
+    scale_x_continuous(limits = c(0, 0.5)) +
     theme_bw())
 
 ggsave("./stats/snp_MAF.tiff", width = 12,
@@ -99,7 +90,7 @@ write.table(maf5[,c("CHROM", "POS")], "./filters/maf5.tsv",
 
 
 
-SNP_count <- read.table("./stats/out.frq.count", header = T, row.names = NULL) %>% 
+SNP_count <- read.table("./stats/unfiltered_stats_complete/out.frq.count", header = T, row.names = NULL) %>% 
   mutate(MA = as.numeric(sub(".*:", "", X.ALLELE.COUNT.))) %>% 
   filter(MA > 0)
 
@@ -128,7 +119,7 @@ ggsave("./stats/genotype_filtering_2x2.tiff", width = 12, height = 8, dpi = 300)
 
 
 # Read in VCFtools output for missing data per individual. 
-depth <- read.table("./stats/unfiltered_stats/out.idepth", header = T)
+depth <- read.table("./stats/unfiltered_stats_complete/out.idepth", header = T)
 
 # Plot missing data histogram.
 ggplot(data = depth, aes(MEAN_DEPTH)) +
@@ -138,7 +129,7 @@ ggplot(data = depth, aes(MEAN_DEPTH)) +
   labs(x = "Mean depth",
        y = "Frequency") +
   theme_bw() +
-  scale_x_continuous(breaks = seq(0, 16, 1))
+  scale_x_continuous(breaks = seq(0, 40, 2))
 
 ggsave("./stats/indv_depth.tiff", width = 12,
        height = 6, dpi = 300)
@@ -154,7 +145,7 @@ depth.keep <- depth[depth$N_SITES > depth.threshold, "INDV"]
 
 # INDV Missingness -------------------------------------------------------------
 
-imiss <- read.table("./stats/out.imiss", header = T)
+imiss <- read.table("./stats/unfiltered_stats_complete/out2.imiss", header = T)
 (indv_miss_p <- summary(imiss$F_MISS))
 (indv_miss_n <- summary(imiss$N_MISS))
 
@@ -176,23 +167,26 @@ indmiss <- imiss[imiss$F_MISS > 0.3, ]
 
 # INDV reads -------------------------------------------------------------------
 
-Th <- 3e6 # Reads threshold for pass/fail [[arbitary]]
+ThU <- 2e6 # Reads threshold for pass/fail [[arbitary]]
+ThL <- 130e6
 
 # This file contains the read numbers per bam file.
-reads <- read.table(file = "stats/sample_reads.txt",
+reads <- read.table(file = "stats/sample_reads2.txt",
                     col.names = c("Sample", "Reads")) %>% 
   filter(Reads > 0) %>% 
   mutate(Sample = gsub('.1.sorted.bam', "", Sample),
-         pass = case_when(Reads >= Th ~ "Y",
-                          Reads <  Th ~ "N"))
+         pass = case_when(Reads >= ThU & Reads < ThL  ~ "Y",
+                          Reads <  Th | Reads  > ThU  ~ "N" ))
+
+quantile(reads$Reads, probs = c(.01, .05, .10, .5, .9, .95, .99))
+mean(reads$Reads); sd(reads$Reads)
 
 # Merge population-level info with read data.
 sample_info <- read.csv("info_files/hdGBS_sampleinfo.csv") %>% 
   merge(., reads, by = "Sample")
 
 # Summary stats by population.
-(pop_reads <- sample_info %>% 
-    filter(pass == "Y") %>% 
+(pop_reads <- sample_info %>%  
     group_by(Population) %>% 
     summarise(mean = mean(Reads, na.rm = T),
               sD   = sd(Reads,   na.rm = T),
@@ -200,30 +194,33 @@ sample_info <- read.csv("info_files/hdGBS_sampleinfo.csv") %>%
               max  = max(Reads,  na.rm = T),
               n    = n()))
 
-write.csv(reads, "stats/sample_reads.csv")
+write.csv(pop_reads, "stats/pop_reads.csv", row.names = F)
 
 (RP <- ggplot(data = sample_info, 
               aes(x = Population, y = Reads/1e6)) + 
-    geom_hline(yintercept = Th/1e6, colour = "blue2",
-               linetype ="dashed") +
+    geom_hline(yintercept = mean(sample_info$Reads/1e6)-sd(sample_info$Reads/1e6), 
+               colour = "blue2", linetype ="dashed", alpha = 1/4) +
+    geom_hline(yintercept = mean(sample_info$Reads/1e6)+sd(sample_info$Reads/1e6), 
+               colour = "blue2", linetype ="dashed", alpha = 1/4) +
     geom_hline(yintercept = mean(sample_info$Reads/1e6),
                color = "blue", linetype = "dashed") +
     geom_boxplot(alpha = 1/10) +
     geom_point(size  = 3/2, 
                shape = 21,
                color = "black",
-               aes(fill = pass)) +
-    scale_fill_manual(values = c("red1", "gray80")) +
+               fill = 'grey80') +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 90,
                                      vjust = 0.5, hjust = 1),
           legend.position = "none") +
-    labs(x = NULL, y = "Reads (millions)"))
+    labs(x = NULL, y = "Reads (millions)") +
+    scale_y_continuous(breaks = c(0, 5, 25, 50, 100, 150, 200),
+                       expand = c(0.01, 0.01)))
 
 # Puts marginal histogram on right-most y-axis.
 # Shows skewed distribution.
 (RPH <- ggMarginal(RP, type = "histogram", margins = "y",
-                   binwidth = 1/2, fill = "gray90", size = 10))
+                   binwidth = 2, fill = "gray90", size = 10))
 
 # Use cowplot here to save multi-plot configuration more easily.
 save_plot("./stats/pop_reads_1.tiff", RPH, ncol = 2, base_height = 6)
@@ -235,7 +232,7 @@ save_plot("./stats/pop_reads_1.tiff", RPH, ncol = 2, base_height = 6)
                  aes(Reads/1e6), color = "gray80", fill = "gray99", bins = 150) +
   theme_bw() +  geom_vline(xintercept = Th/1e6, color = "red") +
   labs(x = "Reads per sample (millions)", y = "Frequency") +
-  scale_x_continuous(breaks = seq(0, 80, 10)) +
+  scale_x_continuous(breaks = seq(0, 200, 20)) +
   scale_y_continuous(breaks = seq(0, 30, 5)))
 
 ggsave("./stats/read_depth_hist.tiff", width = 12,

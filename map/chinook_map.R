@@ -72,16 +72,17 @@ lakes <- st_transform(st_read(dsn = "DBM_BC_7H_MIL_DRAINAGE_POLY"), crs = 4326) 
 # For labeling later - sets text values along y axis at predefined heights.
 (yv <- 55 - (55 - 40.25)*(1:(nrow(sites)/2))/nrow(sites)*2)
 
+
 (pnw <- ggplot(data = sites) +
-  geom_sf(data = USA, fill = "gray90", linewidth = 1/10) +
-  geom_sf(data = bcn, fill = "gray90", linewidth = 1/10) +
-  geom_sf(data = bch, fill = "gray90", linewidth = 1/10) +
-  ggspatial::annotation_north_arrow(location = "bl",
-                                    pad_x = unit(3.65, "cm"),
-             style = ggspatial::north_arrow_fancy_orienteering()) +
-  ggspatial::annotation_scale(location = "bl", pad_x = unit(3.75, "cm"),
-                              pad_y = unit(1/10, "cm"),
-                              width_hint = 1/10) + 
+    geom_sf(data = USA, fill = "gray90", linewidth = 1/10) +
+    geom_sf(data = bcn, fill = "gray90", linewidth = 1/10) +
+    geom_sf(data = bch, fill = "gray90", linewidth = 1/10) +
+    ggspatial::annotation_north_arrow(location = "bl",
+                                      pad_x = unit(3.65, "cm"),
+                                      style = ggspatial::north_arrow_fancy_orienteering()) +
+    ggspatial::annotation_scale(location = "bl", pad_x = unit(3.75, "cm"),
+                                pad_y = unit(1/10, "cm"),
+                                width_hint = 1/10) + 
     geom_sf(data = okanagan, color  = "skyblue", linewidth = 1/4) +
     geom_sf(data = sRiv,     colour = "skyblue", linewidth = 1/4) +
     geom_sf(data = rivers,   colour = "skyblue", linewidth = 1/4) +  
@@ -103,9 +104,9 @@ lakes <- st_transform(st_read(dsn = "DBM_BC_7H_MIL_DRAINAGE_POLY"), crs = 4326) 
     geom_rect(aes(ymin = 40.01, ymax = 54.8, xmax = -153, xmin = -167.25),
               colour = "black", fill = "white", alpha = 1/6, linewidth = 1/20) +
     geom_text(data = sites[sites$sitenum <= 30, ], aes(label = paste(sitenum, ". ", site), 
-                                x = -167, y = yv, hjust = 0), size = 2, inherit.aes = F) +
+                                                       x = -167, y = yv, hjust = 0), size = 2, inherit.aes = F) +
     geom_text(data = sites[sites$sitenum > 30, ], aes(label = paste(sitenum, ". ", site), 
-                                x = -160, y = yv, hjust = 0), size = 2, inherit.aes = F))
+                                                      x = -160, y = yv, hjust = 0), size = 2, inherit.aes = F))
 
 
 # Inset ------------------------------------------------------------------------
@@ -144,7 +145,7 @@ ggdraw(plot = pnw) +
   draw_plot({
     ins
   },
-  x = 0.79,
+  x = 0.790,
   y = 0.575,
   width = 0.2,
   height = 0.5)

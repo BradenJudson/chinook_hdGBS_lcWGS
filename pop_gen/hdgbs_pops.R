@@ -6,8 +6,8 @@ library(viridis); library(poppr); library(hierfstat); library(R.utils)
 nc <- 12 # Number of cores to use in parallel functions.
 
 # Read in genetic data and convert to genlight object.
-gunzip("../data/hdgbs_snps_maf2_m60.vcf.gz")
-hdgbs <- read.vcfR("../data/hdgbs_snps_maf2_m60.vcf")
+gunzip("../data/snps_maf2_m60.vcf.gz")
+hdgbs <- read.vcfR("../data/snps_maf2_m60.vcf")
 hdgl <- vcfR2genlight(hdgbs)
 
 # Part I: Indv and pop info ----------------------------------------------------
@@ -65,59 +65,66 @@ write.csv(pop_div, "../data/pop_snp_div.csv", row.names = FALSE)
 
 # Part 3a: Population structure via PCA ----------------------------------------
 
-# NEEDS REDOING/REFINEMENT ONCE THE PIPELINE IS FINISHED ##
-
 # hdgl_sub <- gl.drop.ind(hdgl)
 
 # Takes a few hours.
-# hd_pca <- glPca(hdgl, nf = 3, parallel = T, n.cores = 12)
+hd_pca <- glPca(hdgl, nf = 3, parallel = T, n.cores = 14)
 
 # Include glPCA object from earlier to decrease computation time.
 # ncl <- find.clusters.genlight(hdgl, glPca = hd_sub_pca,
 #                               max.n.clust = length(unique(hdgl@pop))/3)
 
-# write.csv(hd_pca$scores, "hdgbs_pcascores.csv", row.names = TRUE)
+write.csv(hd_pca$scores, "hdgbs_pcascores.csv", row.names = TRUE)
 
-# drop_indvs <- rownames(pc_scores[pc_scores$PC1 > 50, ])
-# hdgl_sub <- hdgl[indNames(hdgl) %ni% drop_indvs]
-# hd_sub_pca <- glPca(hdgl_sub, nf = 3, parallel = T, n.cores = 12)
-# write.csv(hd_sub_pca$scores, "hdgbs_sub_pcascores.csv", row.names = TRUE)
+"%ni%" <- Negate("%in%")
+drop_indvs <- (pc_scores[pc_scores$PC1 > 50, "fish_ID"])
+hdgl_sub <- hdgl[indNames(hdgl) %ni% drop_indvs]
+hd_sub_pca <- glPca(hdgl_sub, nf = 3, parallel = T, n.cores = 14)
+write.csv(hd_sub_pca$scores, "hdgbs_sub_pcascores.csv", row.names = TRUE)
 
-pca_scores <- read.csv("hdgbs_sub_pcascores.csv") %>% 
-  column_to_rownames("X")
+#pca_scores <- read.csv("../data/hdgbs_pcascores.csv")
+pca_scores <- hd_sub_pca$scores
 
 # Isolate eigenvalues (% variation explained for each PC axis).
-(pc_var <- c(hd_sub_pca$eig/sum(hd_sub_pca$eig)*100)[1:5]); barplot(hd_pca$eig)
+(pc_var <- c(hd_pca$eig/sum(hd_pca$eig)*100)[1:5]); barplot(hd_pca$eig)
 
 # Read in population coordinates for colours later on.
 # Have to make some 3-letter codes into 4-letter codes. 
-coords <- read.table("../map/ch2023_sequenced.txt", sep = "\t", header = T) %>% 
-  mutate(short = str_to_title(substr(Population, start = 1, stop = 3))) %>% 
-  filter(Population != "TAKHANNE_RIVER")
+coords <- read.table("../data/ch2023_sequenced.txt", sep = "\t", header = T) %>% 
+  mutate(short = str_to_title(substr(Population, start = 1, stop = 3))) 
 coords[coords$Population == "TAKHANNE_RIVER", "short"] <- "Takha"
 coords[coords$Population == "KILDALA_RIVER" , "short"] <- "Kild"
 
-# Isolate individual-based PCA vales and combine with geographical information.
-pc_scores <- as.data.frame(pca_scores) %>% 
-  mutate(pop = gsub("-.*","", rownames(.))) %>% 
-  merge(., coords, by.x = "pop", by.y = "short") %>% 
-  arrange(desc(Latitude)) %>% # For ggplot colouring. 
-  mutate(pop = factor(reorder(pop, Latitude))) 
 
-# Plot PCA scores and colour by population with dark = south, light = north.
-ggplot(data = pc_scores, 
-       aes(x = PC1, y = PC2,  fill = factor(Latitude), group = pop)) +
+locs <- read.csv("../data/landgen_chinook_indvs.csv") %>% 
+  mutate(site_full = gsub("[[:space:]]Brood", "", site_full))
+locs[locs$site_full == "Upper Pitt", "site_full"] <- "Pitt"
+
+# Isolate individual-based PCA vales and combine with geographical information.
+pc_scores <- as.data.frame( hd_sub_pca$scores) %>% 
+  rownames_to_column(var = "fish_ID") %>% 
+  merge(., locs, by = "fish_ID") %>% 
+  merge(., coords, by.x = "site_full", by.y = "Site") %>% 
+  arrange(desc(Latitude)) %>% # For ggplot colouring. 
+  mutate(site_full = factor(reorder(site_full, Latitude))) 
+
+# Plot PCA scores and colour by population witcat ../01   ls -l
+#h dark = south, light = north.
+(snp_pca <- ggplot(data = pc_scores, 
+       aes(x = PC1, y = PC2, group = site_full, fill = factor(Latitude))) +
   geom_point(shape = 21, size = 3/2) +
   # labs(x = paste0("PC1 (", round(pc_var[1], 1), "%)"),
   #      y = paste0("PC2 (", round(pc_var[2], 1), "%)")) +
   theme_bw() +
   theme(legend.title = element_blank(),
         legend.position = "right") +
-  scale_fill_manual(values = alpha(c(viridis_pal(option = "D")(length(unique(pc_scores$pop)))), 3/4),
-                    labels = levels(pc_scores$pop)) +
-  guides(fill=guide_legend(ncol = 3, reverse = TRUE))
+  scale_fill_manual(values = alpha(c(viridis_pal(option = "D")(length(unique(pc_scores$site_full)))), 3/4),
+                    labels = levels(pc_scores$site_full)) +
+  guides(fill=guide_legend(ncol = 3, reverse = TRUE)))
 
-ggsave("plots/pca_fillscale.tiff", dpi = 300, width = 8, height = 5)
+ggsave("../plots/pca_fillscale_sub.tiff", dpi = 300, width = 8, height = 5)
+
+ggplotly(snp_pca)
 
 
 # Part 3b: Population structure via sNMF ---------------------------------------
@@ -128,7 +135,7 @@ ggsave("plots/pca_fillscale.tiff", dpi = 300, width = 8, height = 5)
 
 library(LEA)
 
-gunzip("../data/hdgbs_snps_maf2_m60.vcf.gz")
+# gunzip("../data/hdgbs_snps_maf2_m60.vcf.gz")
 LEA::vcf2geno(input.file  = "../data/hdgbs_snps_maf2_m60.vcf",
               output.file = "../data/hdgbs_snps_maf2_m60.geno")
 
@@ -145,6 +152,7 @@ maxK <- 10; rep <- 5
 ch_admix <- load.snmfProject("../data/hdgbs_snps_maf2_m60.snmfProject")
 
 ################ Adjust I above to something reasonable ########################
+      ### Check defaults, use all SNPs?
 
 plot(ch_admix, pch = 19)
 
@@ -160,16 +168,47 @@ for (i in c(1:maxK)) {
 }
 
 # Determine optimum run and K value.
-(opt_snmf <- which(snmf_vals == min(snmf_vals), arr.ind = T) %>% 
-    as.data.frame() %>% `colnames<-`(., c("run", "K")))
+opt_snmf <- which(snmf_vals == min(snmf_vals), arr.ind = T) %>% 
+    as.data.frame() %>% `colnames<-`(., c("run", "K"))
 paste("Optimum is K =", opt_snmf[2], "and run", opt_snmf[1])
 
-qmat <- as.data.frame(LEA::Q(ch_admix, K = as.numeric(opt_snmf$K), 
+# Organize q-value data into a organized dataframe.
+qdf <- as.data.frame(LEA::Q(ch_admix, K = as.numeric(opt_snmf$K), 
                              run = as.numeric(opt_snmf$run))) %>% 
   mutate(fish = hdgl@ind.names) %>% relocate(fish, .before = "V1") %>% 
-  `colnames<-`(., c("fish", paste0("K", seq(1:as.numeric(opt_snmf$K)))))
+  `colnames<-`(., c("fish", paste0("K", seq(1:as.numeric(opt_snmf$K))))) %>% 
+  pivot_longer(cols = starts_with("K"), names_to = "pop", values_to = "q") %>% 
+  group_by(fish) %>% 
+  mutate(likely_assignment = pop[which.max(q)],
+         assignment_prob   = max(q)) %>% 
+  arrange(likely_assignment, assignment_prob, q) %>% 
+  ungroup() %>% 
+  mutate(fish = forcats::fct_inorder(factor(fish)))
 
 
+
+# https://teunbrand.github.io/ggh4x/reference/guide_axis_nested.html
+
+
+
+(qcol <- ggplot(data = qdf) +
+  geom_col(aes(x = fish, y = q, fill = pop), linewidth = 1) +
+  theme(axis.text.x = element_blank()) +
+  labs(x = NULL, y = "Ancestry coefficients") +
+  theme_bw() +
+  theme(panel.background = element_rect(color = "black", fill = NA),
+        panel.spacing.x = unit(0, "lines"),
+        panel.grid = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.ticks.y = element_line(color = "black"),
+        legend.margin = unit(c(0,0,0,0), "cm"),
+        legend.position = "top",
+        legend.title = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()) +
+  scale_y_continuous(expand = c(0,0)))
+
+ggsave("../plots/q_cols.tiff", dpi = 300, width = 8, height = 5)
 
 # Part 4: Genetic differentiation ----------------------------------------------
 
