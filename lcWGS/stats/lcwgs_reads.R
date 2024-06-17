@@ -1,43 +1,106 @@
 setwd("~/ots_landscape_genetics/lcWGS/stats")
 
-library(tidyverse)
+library(tidyverse); library(ggpmisc); library(ggExtra); library(cowplot)
 
-dat <- as.data.frame(matrix(read.table("alignment_flagstat.txt",
-                     sep = "\t", col.names = "all")[,1],
-                     ncol = 17, byrow = T)) %>% 
-  `colnames<-`(., c("file", "reads", "primary","secondary", "supplementary",
-                    "duplicates", "p.duplicates", "mapped", "p.mapped",
-                    "paired", "read1", 
-                    "read2", "p.paired", "self.paired", "singletons",
-                    "mmap.diff", "mmap.diffq5")) %>% 
-  mutate(reads = as.numeric(gsub("\\D+", "", reads))/10,
-         p.paired = as.numeric(str_sub(p.paired, -13, -9)),
-         file = gsub("^.*\\.","", str_sub(start = 40,end = 70, 
-                                  substr(file, 1, nchar(file)-13))),
-         abb = str_sub(start = 0, end = 3, file)) %>% 
-  select(!c(duplicates, secondary, supplementary, mapped))
 
-hist(dat$reads, breaks = 100, main = NULL, xlab = "Reads")
+# Reads and coverage -----------------------------------------------------------
 
-write.csv(dat[,c(1:2)], "lcwgs_indv_reads.csv", row.names = F)
 
-sites <- read.delim(file = "../../data/ch2023_sequenced.txt") %>% 
-  arrange(Latitude) %>% 
-  mutate(site = tools::toTitleCase(tolower(gsub("\\_.*", "", Population))),
-         sitenum = as.numeric(rownames(.)),
-         abb = tools::toTitleCase(str_sub(start = 0, end = 3, site)))
+cov <- read.table("bam_coverage.txt", sep = "",header = F, 
+                  col.names = c("file", "coverage"))
 
-fd <- merge(dat, sites, by = "abb") %>% select(!c("abb"))
+reads <- read.table("reads.txt", sep = "", header = F,
+                    col.names = c("file", "reads")) %>% 
 
-ggplot(data = fd, aes(x = site, y = reads/1e6)) + 
-  geom_hline(yintercept = 20, linetype = 2, colour = "red") +
-  geom_boxplot(alpha = 1/10) +  theme_bw() +
-  geom_point(size  = 3/2, shape = 21,
-             color = "black", fill = "grey90") +
-  theme(axis.text.x = element_text(angle = 90,
-                      vjust = 0.5, hjust = 1),
-        legend.position = "none") +
-  labs(x = NULL, y = "Reads (millions)")
+d <- read.table("../../data/bam_list_n453.txt", header = F)
+  
+  
+  
+  mutate(sample = gsub(".dedup.clip.bam", "", 
+                     gsub("^.*IDT_i\\d{1,3}_\\d{1,3}\\.", "", file)))
 
-ggsave("../../plots/lcwgs_indv_reads.tiff", dpi = 300, height = 7, width = 12)
+dat <- merge(cov, reads, by = "file") %>% 
+  file = gsub(".dedup.clip.bam", "", 
+              gsub("^.*IDT_i\\d{1,3}_\\d{1,3}\\.", "", file))
+
+(lre <- ggplot(data  = dat,
+               aes(x = reads/1e6,
+                   y = coverage)) + 
+    scale_x_continuous(breaks = seq(0, 90, 10)) +
+    scale_y_continuous(breaks = c(0, seq(1,3,1/2), 4)) +
+    coord_cartesian(clip = 'on') +
+    geom_segment(aes(y = mean(`coverage`), 
+                     yend = mean(`coverage`), 
+                     x = -Inf, xend = Inf),
+                 linewidth = 1/2, linetype = 2) +
+    geom_segment(aes(x = mean(`reads`)/1e6,
+                     xend = mean(`reads`)/1e6,
+                     y = -Inf, yend = Inf),
+                 linewidth = 1/2, linetype = 2) +
+    geom_smooth(method = "lm",
+                colour = "red",
+                alpha  = 1/6,
+                linetype = 1) +
+    geom_point(colour = "black",
+               shape  = 21, 
+               fill   = "gray80",
+               size   = 2,
+               alpha  = 4/5) +
+    theme_bw() +
+    theme(panel.grid = element_line(color = "gray95"),
+          panel.grid.minor.y = element_blank()) +
+    labs(x = "Reads (millions)", 
+         y = "Average Individual Coverage") +
+    stat_poly_eq(use_label(c("R2", "p")),
+                 label.x = "left",
+                 label.y = "top",
+                 small.p = TRUE))
+
+# Add density plots of marginal distributions.
+(mds <- ggMarginal(lre, type = "density", colour = "black", 
+                   linewidth = 1, fill = "gray90", alpha = 0.7))
+
+save_plot("../../plots/chinook_lcWGS_reads_coverage.tiff", mds, ncol = 2,
+          base_height = 6, base_asp = 1)
+
+
+(sstat <- dat %>% 
+    pivot_longer(cols = c("reads", "coverage")) %>% 
+    group_by(name) %>% 
+    summarise(mean_value = mean(value),
+              med_value  = median(value),
+              max_val    = max(value),
+              min_val    = min(value),
+              sd         = sd(value)))
+
+
+# Individuals with lowest reads and/or coverage.
+dat %>% arrange(reads) %>% head() %>% select(c(1:3L))
+
+
+
+# Population-level stats -------------------------------------------------------
+
+samples <- read.csv("../../data/landgen_chinook_indvs.csv")[,c(1,3)] %>% 
+  group_by(fish_ID) %>% sample_n(1) %>% 
+  mutate(fish_ID = gsub("\\.", "-", fish_ID),
+         site_full = gsub("[[:space:]]Brood", "", site_full))
+
+datpop <- merge(dat, samples, by.y = "fish_ID", by.x = "file") %>% 
+  group_by(site_full) %>% 
+  summarise(coverage_variance = var(coverage),
+            mean_coverage = mean(coverage),
+            min_coverage  = min(coverage))
+
+
+write.csv(datpop, "ch_lcwgs_covvar.csv", row.names = F)
+
+
+
+
+
+
+
+
+
 

@@ -6,9 +6,11 @@ library(viridis); library(poppr); library(hierfstat); library(R.utils)
 nc <- 12 # Number of cores to use in parallel functions.
 
 # Read in genetic data and convert to genlight object.
-gunzip("../data/snps_maf2_m60.vcf.gz")
-hdgbs <- read.vcfR("../data/snps_maf2_m60.vcf")
+#gunzip("../data/snps_maf001.vcf.gz")
+hdgbs <- read.vcfR("../data/snps_maf001.vcf")
 hdgl <- vcfR2genlight(hdgbs)
+
+
 
 # Part I: Indv and pop info ----------------------------------------------------
 
@@ -21,7 +23,7 @@ sites[sites$site == "Salmon", "site"] <- "Salmon Fork"
 sites[sites$site == "Big", "site"] <- "Big Salmon"
 
 samples <- as.factor(c(colnames(hdgbs@gt[,c(2:ncol(hdgbs@gt))])))
-
+ 
 # Read in sample and population info. Arrange accordingly. 
 indvs <- read.csv("../data/landgen_chinook_indvs.csv", na.strings = "") %>% 
   filter(fish_ID %in% c(colnames(hdgbs@gt[,c(2:ncol(hdgbs@gt))]))) %>% 
@@ -40,6 +42,8 @@ indvs[indvs$site_full == "Harrison Brood", "site_full"] <- "Harrison"
 
 # Assign population factor.
 hdgl@pop <- as.factor(indvs$site_full)
+
+sites <- sites[sites$site %in% indvs$site_full, ]
 
 hdgl <- dartR::gl.sort(x = hdgl, order.by = c(sites$site))
 
@@ -76,14 +80,13 @@ hd_pca <- glPca(hdgl, nf = 3, parallel = T, n.cores = 14)
 
 write.csv(hd_pca$scores, "hdgbs_pcascores.csv", row.names = TRUE)
 
-"%ni%" <- Negate("%in%")
-drop_indvs <- (pc_scores[pc_scores$PC1 > 50, "fish_ID"])
-hdgl_sub <- hdgl[indNames(hdgl) %ni% drop_indvs]
+hdgl_sub <- hdgl[!indNames(hdgl) %in% "Imn-1999-351"]
+hdgl_sub@pop <-  as.factor(indvs[indvs$fish_ID != "Imn-1999-351", "site_full"])
 hd_sub_pca <- glPca(hdgl_sub, nf = 3, parallel = T, n.cores = 14)
-write.csv(hd_sub_pca$scores, "hdgbs_sub_pcascores.csv", row.names = TRUE)
+write.csv(hd_sub_pca$scores, "../data/hdgbs_sub_pcascores.csv", row.names = TRUE)
 
 #pca_scores <- read.csv("../data/hdgbs_pcascores.csv")
-pca_scores <- hd_sub_pca$scores
+pca_scores <- hd_pca$scores
 
 # Isolate eigenvalues (% variation explained for each PC axis).
 (pc_var <- c(hd_pca$eig/sum(hd_pca$eig)*100)[1:5]); barplot(hd_pca$eig)
@@ -101,7 +104,7 @@ locs <- read.csv("../data/landgen_chinook_indvs.csv") %>%
 locs[locs$site_full == "Upper Pitt", "site_full"] <- "Pitt"
 
 # Isolate individual-based PCA vales and combine with geographical information.
-pc_scores <- as.data.frame( hd_sub_pca$scores) %>% 
+pc_scores <- as.data.frame( hd_pca$scores) %>% 
   rownames_to_column(var = "fish_ID") %>% 
   merge(., locs, by = "fish_ID") %>% 
   merge(., coords, by.x = "site_full", by.y = "Site") %>% 
@@ -113,8 +116,9 @@ pc_scores <- as.data.frame( hd_sub_pca$scores) %>%
 (snp_pca <- ggplot(data = pc_scores, 
        aes(x = PC1, y = PC2, group = site_full, fill = factor(Latitude))) +
   geom_point(shape = 21, size = 3/2) +
-  # labs(x = paste0("PC1 (", round(pc_var[1], 1), "%)"),
-  #      y = paste0("PC2 (", round(pc_var[2], 1), "%)")) +
+    labs(x = "PC1 (55.6%)", y = "PC2 (2.3%)") +
+  labs(x = paste0("PC1 (", round(pc_var[1], 1), "%)"),
+       y = paste0("PC2 (", round(pc_var[2], 1), "%)")) +
   theme_bw() +
   theme(legend.title = element_blank(),
         legend.position = "right") +
@@ -122,9 +126,53 @@ pc_scores <- as.data.frame( hd_sub_pca$scores) %>%
                     labels = levels(pc_scores$site_full)) +
   guides(fill=guide_legend(ncol = 3, reverse = TRUE)))
 
-ggsave("../plots/pca_fillscale_sub.tiff", dpi = 300, width = 8, height = 5)
+ggsave("../plots/pca_fillscale.tiff", dpi = 300, width = 8, height = 5)
 
 ggplotly(snp_pca)
+
+
+ggplot(data = pc_scores,
+       aes(x = site_full, y = PC1)) +
+  geom_point() +
+  theme_bw() + labs(x = NULL) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+pc_popav <- pc_scores %>% 
+  group_by(site_full) %>% 
+  summarise(V1A = mean(PC1),
+            V2A = mean(PC2))
+
+pcavectors2 <- merge(pc_scores, pc_popav, by = "site_full")
+
+
+ggplot(data = pcavectors2, aes(fill = Latitude, colour = Latitude)) +
+  geom_segment(aes(x = V1A, y = V2A, xend = PC1, yend = PC2), linewidth = 3/4) +
+  geom_point(aes(x = PC1, y = PC2),color = "black", shape = 21, size = 2) + theme_bw() +
+  scale_color_gradient(guide = 'none') +
+  ggrepel::geom_label_repel(data = pc_popav, max.overlaps = Inf, 
+                            min.segment.length = 0, box.padding = 1/2,
+                            aes(x = V1A, y = V2A, label = site_full), 
+                            inherit.aes = FALSE) +
+  labs(x = paste0("PC1 (", round(varPC1, 1), "%)"),
+       y = paste0("PC2 (", round(varPC2, 1), "%)")) + 
+  theme(legend.position = "top", legend.title = element_blank(),
+        legend.text = element_text(size = 11))
+
+
+pc_long <- pcavectors2 %>% 
+  pivot_longer(cols = c("PC1", "PC2")) 
+
+ggplot(data = pc_long, aes(x = site_full, y = value)) +
+  geom_point(alpha = 2/3) + facet_wrap(~name, ncol = 1) + theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(x = NULL, y = "PC score")
+
+ggplot(data = pc_popav, aes(x = V1A, y = V2A, label = site_full)) +
+  geom_point() + theme_bw() +
+    geom_label_repel(max.overlaps = Inf, 
+                     min.segment.length = 0)
+
 
 
 # Part 3b: Population structure via sNMF ---------------------------------------
@@ -212,9 +260,8 @@ ggsave("../plots/q_cols.tiff", dpi = 300, width = 8, height = 5)
 
 # Part 4: Genetic differentiation ----------------------------------------------
 
-
 # Compute pairwise Fst values. Takes a while. Save locally.
-gendist <- dartR::gl.fst.pop(hdgl, nclusters = nc)
+gendist <- dartR::gl.fst.pop(hdgl_sub, nclusters = 16)
 write.csv(gendist, "../data/fst_matrix.csv", row.names = T)
 # gendist <- read.csv("../data/fst_matrix.csv", row.names = 1)
 

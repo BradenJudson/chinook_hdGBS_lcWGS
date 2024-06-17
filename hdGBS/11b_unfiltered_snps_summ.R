@@ -7,7 +7,7 @@ library(tidyverse); library(ggplot2); library(ggExtra); library(cowplot)
 # SNP Depths -------------------------------------------------------------------
 ################################################################################
 
-SNPdepth <- read.table("./stats/unfiltered_stats_complete/out.ldepth.mean", header = T); colnames(SNPdepth)
+SNPdepth <- read.table("../data/snp_stats_hq/highqsnps.idepth", header = T); colnames(SNPdepth)
 
 (mean_snp_depth <- summary(SNPdepth$MEAN_DEPTH)); sd(SNPdepth$MEAN_DEPTH)
 quantile(SNPdepth$MEAN_DEPTH, probs = c(0.1, 0.5, 0.9, 0.95, 0.99, 0.999, 0.9999))
@@ -27,7 +27,6 @@ nrow(SNPdepth[SNPdepth$MEAN_DEPTH > 100, ])
                  aes(MEAN_DEPTH), bins = 150, 
                  color = "black", fill = "gray80") +
   theme_bw() + xlim(3, 30) +
-  geom_vline(xintercept = DEPTHLT, color = "red") +
   labs(x = "Mean SNP depth", y = "Frequency"))
 
 ggsave("./stats/snp_depth.tiff", width = 12,
@@ -37,7 +36,7 @@ SNP_d3 <- SNPdepth[SNPdepth$MEAN_DEPTH >= 3 & SNPdepth$MEAN_DEPTH < 100, ]
 
 # SNP Missingness --------------------------------------------------------------
 
-SNPmiss <- read.table("./stats/unfiltered_stats_complete/out.lmiss", header = T)
+SNPmiss <- read.table("../data/snp_stats_hq/highqsnps.lmiss", header = T)
 
 
 MISST <- 4/10
@@ -48,7 +47,7 @@ SNPmiss$filter <- case_when(SNPmiss$F_MISS >= MISST ~ "F",
 
 (snp_misshist <- ggplot() +
     geom_histogram(data = SNPmiss, 
-                   aes(F_MISS), bins = 180, color = "black", 
+                   aes(F_MISS), bins = 140, color = "black", 
                    fill = "gray80")  +
     labs(x = "SNP Missingness (%)", y = "Frequency") +
     theme_bw())
@@ -119,7 +118,7 @@ ggsave("./stats/genotype_filtering_2x2.tiff", width = 12, height = 8, dpi = 300)
 
 
 # Read in VCFtools output for missing data per individual. 
-depth <- read.table("./stats/unfiltered_stats_complete/out.idepth", header = T)
+depth <- read.table("../data/snp_stats_hq/highqsnps.idepth", header = T)
 
 # Plot missing data histogram.
 ggplot(data = depth, aes(MEAN_DEPTH)) +
@@ -129,23 +128,26 @@ ggplot(data = depth, aes(MEAN_DEPTH)) +
   labs(x = "Mean depth",
        y = "Frequency") +
   theme_bw() +
-  scale_x_continuous(breaks = seq(0, 40, 2))
+  scale_x_continuous(breaks = seq(0, 80, 2))
 
 ggsave("./stats/indv_depth.tiff", width = 12,
        height = 6, dpi = 300)
 
 # Summarize individual missing data and select threshold for discarding data.
 (mean_depth <- summary(depth$MEAN_DEPTH))
+hmd <- mean_depth/2
 depth.threshold <- 300e3
 sum(depth$N_SITES < depth.threshold)
 
 # Select individuals passing depth filtering step.
-depth.keep <- depth[depth$N_SITES > depth.threshold, "INDV"] 
+depth.keep50av <- depth[depth$MEAN_DEPTH < hmd[4], ] 
+
+write.csv(depth.keep50av, "b.csv")
 
 
 # INDV Missingness -------------------------------------------------------------
 
-imiss <- read.table("./stats/unfiltered_stats_complete/out2.imiss", header = T)
+imiss <- read.table("../data/snp_stats_hq/highqsnps.imiss", header = T)
 (indv_miss_p <- summary(imiss$F_MISS))
 (indv_miss_n <- summary(imiss$N_MISS))
 
@@ -162,7 +164,9 @@ nrow(imiss[imiss$F_MISS < 0.90,])
 ggsave("./stats/indv_missing_n.tiff", width = 12,
        height = 6, dpi = 300)
 
-indmiss <- imiss[imiss$F_MISS > 0.3, ] 
+indmiss <- imiss[imiss$F_MISS > 0.2, ] 
+
+write.csv(indmiss, "i.csv")
 
 
 # INDV reads -------------------------------------------------------------------
@@ -242,4 +246,6 @@ ind_fails <- sample_info[sample_info$pass == "N", "Sample"]
 
 write.table(ind_fails, "stats/ind_fails.txt", quote = FALSE, 
             row.names = FALSE, col.names = FALSE, sep = "\t")
+
+
 

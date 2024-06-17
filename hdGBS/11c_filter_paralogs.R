@@ -6,7 +6,7 @@ library(tidyverse); library(ggplot2); library(vcfR)
 # Also see McKinney et al., 2017 (DOI: 10.1111/1755-0998.12613).
 source("./HDplot/HDplot.R")
 
-input <- read.vcfR("../data/hdgbs_snps_maf2_m60.vcf.gz")
+input <- read.vcfR("../data/snps_maf001.vcf")
 
 # Tresholds in Chinook described in McKinney et al., 2017.
 Hmax <- 0.6
@@ -17,9 +17,7 @@ HDplotResults <- HDplot(input) %>%
   mutate(SNP = as.factor(case_when(H >  0.60 | abs(D) >  7 ~ "Duplicate",
                                    H <= 0.60 | abs(D) <= 7 ~ "Singleton")))
 
-summary(HDplotResults$SNP) 
-
-head(HDplotResults)
+summary(HDplotResults$SNP); head(HDplotResults)
 
 (HD_HD <- ggplot(data = HDplotResults) +
     geom_vline(xintercept = Hmax, linewidth = 1,
