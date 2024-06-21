@@ -32,4 +32,5 @@ pop_gen/hdgbs_sub_pcascores.csv
 lcWGS/stats/ch_lcwgs_covvar.csv
 data/pca_m15_maf005.cov
 comp/allele_frequencies.csv
+data/otsh_Sequence_report.tsv
 lcWGS/imputation/diffvcf.diff.sites_in_files
