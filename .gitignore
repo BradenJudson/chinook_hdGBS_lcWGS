@@ -34,3 +34,7 @@ data/pca_m15_maf005.cov
 comp/allele_frequencies.csv
 data/otsh_Sequence_report.tsv
 lcWGS/imputation/diffvcf.diff.sites_in_files
+data/test.csv
+data/maximum_original_GLs.csv
+data/maximum_imputed_GLs.csv
+data/imputed_histogram_data.csv
