@@ -72,10 +72,10 @@ hist2 <- \(df) { ggplot(data = df[df$NC_056429.1 != 0,],
     labs(y = "SNPs (millions)", x = "Genotype probability") +
     theme(panel.grid.minor = element_blank()) }
 
-hist2(imputed)
+(imp <- hist2(imputed))
 ggsave("../plots/imputedGPs_hist.tiff", dpi = 300, width = 10, height = 8)
 
-hist2(original)
+(ori <- hist2(original))
 ggsave("../plots/originalGPs_hist.tiff", dpi = 300, width = 10, height = 8)
 
 
@@ -132,10 +132,13 @@ deltaGP <- reduce(dgpb, full_join, by = "GP_bin") %>%
   geom_col(just = 1, colour = "black", fill = "gray90") +
   labs(x = "Change in genotype probability", y = "SNPs (millions)"))
 
+write.csv(deltaGP, "../data/deltaGP.csv", row.names = F)
 ggsave("../plots/deltaGP_hist.tiff", dpi = 300, width = 10, height = 8)
 
 
 
 # Combine plots ----------------------------------------------------------------
 
-
+cowplot::plot_grid(plotlist = list(imp, ori, cgp), ncol = 1, 
+                   labels = c("a)", "b)", "c)"))
+ggsave("../plots/gp_multihist.tiff", dpi = 300, width = 8, height = 16)

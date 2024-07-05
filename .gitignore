@@ -38,3 +38,5 @@ data/test.csv
 data/maximum_original_GLs.csv
 data/maximum_imputed_GLs.csv
 data/imputed_histogram_data.csv
+data/original_histogram_data.csv
+data/deltaGP.csv
