@@ -64,27 +64,27 @@ ggsave("../plots/lcwgs_pca.tiff", dpi = 300, width = 12, height = 9)
 
 
 
-# Exploration ------------------------------------------------------------------
-
-pc_var <- pcavec %>% 
-  group_by(site_full) %>% 
-  summarise(V1A = var(V1),
-            V2A = var(V2)) %>% 
-  mutate(lab = case_when(V2A > 6e-4 ~ site_full,
-                         V1A > 1e-5 ~ site_full))
-
-ggplot(data = pc_var,
-       aes(x = V1A, y = V2A)) +
-  geom_point() + theme_bw() +
-  ggrepel::geom_label_repel(aes(label = lab),
-                            max.overlaps = Inf, 
-                            min.segment.length = 0) +
-  labs(x = paste0("PC1 (", round(varPC1, 1), "%) Variance"),
-       y = paste0("PC2 (", round(varPC2, 1), "%) Variance")) + 
-  theme(legend.position = "top", legend.title = element_blank(),
-        legend.text = element_text(size = 11)) 
-
-ggsave("../plots/lcwgs_pca_variance.tiff", dpi = 300, width = 12, height = 9)
-
-
+# # Exploration ------------------------------------------------------------------
+# 
+# pc_var <- pcavec %>% 
+#   group_by(site_full) %>% 
+#   summarise(V1A = var(V1),
+#             V2A = var(V2)) %>% 
+#   mutate(lab = case_when(V2A > 6e-4 ~ site_full,
+#                          V1A > 1e-5 ~ site_full))
+# 
+# ggplot(data = pc_var,
+#        aes(x = V1A, y = V2A)) +
+#   geom_point() + theme_bw() +
+#   ggrepel::geom_label_repel(aes(label = lab),
+#                             max.overlaps = Inf, 
+#                             min.segment.length = 0) +
+#   labs(x = paste0("PC1 (", round(varPC1, 1), "%) Variance"),
+#        y = paste0("PC2 (", round(varPC2, 1), "%) Variance")) + 
+#   theme(legend.position = "top", legend.title = element_blank(),
+#         legend.text = element_text(size = 11)) 
+# 
+# ggsave("../plots/lcwgs_pca_variance.tiff", dpi = 300, width = 12, height = 9)
+# 
+# 
 

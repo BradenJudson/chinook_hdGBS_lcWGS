@@ -1,51 +1,145 @@
 setwd("~/ots_landscape_genetics/pop_gen")
 
 library(tidyverse); library(vcfR); library(ggplot2); library(adegenet)
-library(viridis); library(poppr); library(hierfstat); library(R.utils)
+library(viridis); library(cowplot); library(hierfstat); library(R.utils)
 
 nc <- 12 # Number of cores to use in parallel functions.
 
 # Read in genetic data and convert to genlight object.
-#gunzip("../data/snps_maf001.vcf.gz")
-hdgbs <- read.vcfR("../data/snps_maf001.vcf")
+hdgbs <- read.vcfR("../data/snps_maf001_singletons.vcf")
 hdgl <- vcfR2genlight(hdgbs)
 
 
+# Individuals and sites --------------------------------------------------------
+
+indvs <- read.csv("../data/landgen_chinook_indvs.csv", na.strings = "") %>% 
+  mutate(site_full = gsub("[[:space:]]Brood", "", site_full))
+indvs[indvs$site_full == "Upper Pitt", "site_full"] <- "Pitt"
+
+sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>% 
+  mutate(site = tools::toTitleCase(tolower(gsub("\\_.*", "", Population))),
+         sitenum = as.numeric(rownames(.))) %>% 
+  arrange(Latitude) 
+
+# PCA w/ plink -----------------------------------------------------------------
+
+# First need to add PLINK to .Renviron, then run the PCA on the VCF. Much faster than alternatives.
+system("plink.exe --vcf ../data/snps_maf001_singletons.vcf --aec --pca --out ../data/snps_maf001_singletons")
+
+pc_scores <- read_table2("../data/snps_maf001_singletons.eigenvec", col_names = F) %>% 
+  .[,2:ncol(.)] %>% # Remove unnecessary first column.
+  `colnames<-`(., c("id", paste0("PC", 1:(ncol(.)-1)))) %>% 
+  merge(., indvs, by.x = "id", by.y = "fish_ID") %>% 
+  merge(., sites[,c("Site", "Latitude")], by.x = "site_full", 
+           by.y = "Site", all.x = T) %>% 
+  mutate(site_full = as.factor(site_full))
+
+eigenval <- scan("../data/snps_maf001_singletons.eigenval")
+
+pc_plot <- function(x, y) {
+  
+  xPC <- rlang::as_label(eval(parse(text=enquo(x)))[[2]])
+  yPC <- rlang::as_label(eval(parse(text=enquo(y)))[[2]])
+  
+  pc_var <- eigenval/sum(eigenval)*100
+  
+  (pca <- ggplot(data = pc_scores,
+                 aes(x = {{x}}, y = {{y}}, group = site_full, fill = factor(Latitude))) +
+      geom_point(shape = 21, size = 3/2) + theme_bw() +
+      theme(legend.title = element_blank(),
+            legend.position = "none") +
+      labs(x = paste0(xPC, " (", round(pc_var[as.numeric(str_sub(start = 3, end = 3, xPC))], 1), "%)"),
+           y = paste0(yPC, " (", round(pc_var[as.numeric(str_sub(start = 3, end = 3, yPC))], 1), "%)")) +
+      scale_fill_manual(values = c(viridis_pal(option = "D")(length(unique(pc_scores$site_full)))),
+                        labels = levels(unique(pc_scores$site_full))))
+  
+  return(pca)
+  
+}
+
+(snp_pca <- cowplot::plot_grid(plotlist = list(
+  pc_plot(x = PC1, y = PC2),
+  pc_plot(x = PC1, y = PC3),
+  pc_plot(x = PC2, y = PC3) +
+    theme(legend.position = "right")
+), ncol = 3, rel_widths = c(1,1,1.9)))
+
+ggsave("../plots/pca_fillscale_multi.tiff", dpi = 300, width = 16, height = 5)
+
+
+star_plot <- function(x, y) {
+  
+  xPC <- rlang::as_label(eval(parse(text=enquo(x)))[[2]])
+  yPC <- rlang::as_label(eval(parse(text=enquo(y)))[[2]])
+  
+  pc_var <- eigenval/sum(eigenval)*100
+  
+  pc_popav <- pc_scores %>% 
+    group_by(site_full) %>% 
+    summarise(V1A = mean(PC1),
+              V2A = mean(PC2))
+  
+  pcavectors2 <- merge(pc_scores, pc_popav, by = "site_full") %>% 
+    arrange(Latitude) 
+  
+  levels(pcavectors2$site_full) <- c(unique(pc_scores$site_full))
+  
+  
+  (pca <- ggplot(data = pcavectors2, aes(colour = site_full)) +
+      geom_segment(aes(x = V1A, y = V2A, xend = PC1, yend = PC2), linewidth = 3/4, alpha = 2/3) +
+      scale_color_manual(values = c(viridis_pal(option = "D")(length(unique(pcavectors2$site_full)))),
+                        labels = levels((pcavectors2$site_full))) +
+      theme_bw() +
+      # scale_color_gradient(guide = 'none') +
+      ggrepel::geom_label_repel(data = pc_popav, max.overlaps = Inf, 
+                                min.segment.length = 0, box.padding = 1/2,
+                                aes(x = V1A, y = V2A, label = site_full), 
+                                inherit.aes = FALSE) +
+      labs(x = paste0(xPC, " (", round(pc_var[as.numeric(str_sub(start = 3, end = 3, xPC))], 1), "%)"),
+           y = paste0(yPC, " (", round(pc_var[as.numeric(str_sub(start = 3, end = 3, yPC))], 1), "%)")) +
+      theme(legend.position = "none", legend.title = element_blank(),
+            legend.text = element_text(size = 11)))
+  
+  return(pca)
+  
+}
+
+star_plot(x = PC1, y = PC2)
 
 # Part I: Indv and pop info ----------------------------------------------------
 
-sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>% 
-  arrange(Latitude) %>% 
-  mutate(site = tools::toTitleCase(tolower(gsub("\\_.*", "", Population))),
-         sitenum = as.numeric(rownames(.)))
-sites[sites$site == "San", "site"] <- "San Juan"
-sites[sites$site == "Salmon", "site"] <- "Salmon Fork"
-sites[sites$site == "Big", "site"] <- "Big Salmon"
-
-samples <- as.factor(c(colnames(hdgbs@gt[,c(2:ncol(hdgbs@gt))])))
- 
-# Read in sample and population info. Arrange accordingly. 
-indvs <- read.csv("../data/landgen_chinook_indvs.csv", na.strings = "") %>% 
-  filter(fish_ID %in% c(colnames(hdgbs@gt[,c(2:ncol(hdgbs@gt))]))) %>% 
-  arrange(factor(fish_ID, levels = samples))
-
-# Rename some samples for consistent labeling downstream.
-indvs[indvs$site_full == "Big Qualicum Brood", "site_full"] <- "Qualicum"
-indvs[indvs$site_full == "Serpentine Brood", "site_full"] <- "Serpentine"
-indvs[indvs$site_full == "Upper Pitt", "site_full"] <- "Pitt"
-indvs[indvs$site_full == "Spius Brood", "site_full"] <- "Spius"
-indvs[indvs$site_full == "Harrison Brood", "site_full"] <- "Harrison"
-# ^ Are Harrison and Harrison Brood different? Doubt it but check w/ TH. 
-
-# c(colnames(hdgbs@gt))[c(colnames(hdgbs@gt)) %ni% indvs$fish_ID]
-# ^ Use this to check samples when pipeline is finished.
-
-# Assign population factor.
-hdgl@pop <- as.factor(indvs$site_full)
-
-sites <- sites[sites$site %in% indvs$site_full, ]
-
-hdgl <- dartR::gl.sort(x = hdgl, order.by = c(sites$site))
+# sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>% 
+#   arrange(Latitude) %>% 
+#   mutate(site = tools::toTitleCase(tolower(gsub("\\_.*", "", Population))),
+#          sitenum = as.numeric(rownames(.)))
+# sites[sites$site == "San", "site"] <- "San Juan"
+# sites[sites$site == "Salmon", "site"] <- "Salmon Fork"
+# sites[sites$site == "Big", "site"] <- "Big Salmon"
+# 
+# samples <- as.factor(c(colnames(hdgbs@gt[,c(2:ncol(hdgbs@gt))])))
+#  
+# # Read in sample and population info. Arrange accordingly. 
+# indvs <- read.csv("../data/landgen_chinook_indvs.csv", na.strings = "") %>% 
+#   filter(fish_ID %in% c(colnames(hdgbs@gt[,c(2:ncol(hdgbs@gt))]))) %>% 
+#   arrange(factor(fish_ID, levels = samples))
+# 
+# # Rename some samples for consistent labeling downstream.
+# indvs[indvs$site_full == "Big Qualicum Brood", "site_full"] <- "Qualicum"
+# indvs[indvs$site_full == "Serpentine Brood", "site_full"] <- "Serpentine"
+# indvs[indvs$site_full == "Upper Pitt", "site_full"] <- "Pitt"
+# indvs[indvs$site_full == "Spius Brood", "site_full"] <- "Spius"
+# indvs[indvs$site_full == "Harrison Brood", "site_full"] <- "Harrison"
+# # ^ Are Harrison and Harrison Brood different? Doubt it but check w/ TH. 
+# 
+# # c(colnames(hdgbs@gt))[c(colnames(hdgbs@gt)) %ni% indvs$fish_ID]
+# # ^ Use this to check samples when pipeline is finished.
+# 
+# # Assign population factor.
+# hdgl@pop <- as.factor(indvs$site_full)
+# 
+# sites <- sites[sites$site %in% indvs$site_full, ]
+# 
+# hdgl <- dartR::gl.sort(x = hdgl, order.by = c(sites$site))
 
 # Part 2: Genetic diversity ----------------------------------------------------
 
@@ -67,69 +161,8 @@ write.csv(pop_div, "../data/pop_snp_div.csv", row.names = FALSE)
 #### Use pixy to est. nucleotide div. and diff. see https://pixy.readthedocs.io/en/latest/index.html ####
 # Need WSL approval?
 
-# Part 3a: Population structure via PCA ----------------------------------------
 
-# hdgl_sub <- gl.drop.ind(hdgl)
-
-# Takes a few hours.
-hd_pca <- glPca(hdgl, nf = 3, parallel = T, n.cores = 14)
-
-# Include glPCA object from earlier to decrease computation time.
-# ncl <- find.clusters.genlight(hdgl, glPca = hd_sub_pca,
-#                               max.n.clust = length(unique(hdgl@pop))/3)
-
-write.csv(hd_pca$scores, "hdgbs_pcascores.csv", row.names = TRUE)
-
-hdgl_sub <- hdgl[!indNames(hdgl) %in% "Imn-1999-351"]
-hdgl_sub@pop <-  as.factor(indvs[indvs$fish_ID != "Imn-1999-351", "site_full"])
-hd_sub_pca <- glPca(hdgl_sub, nf = 3, parallel = T, n.cores = 14)
-write.csv(hd_sub_pca$scores, "../data/hdgbs_sub_pcascores.csv", row.names = TRUE)
-
-#pca_scores <- read.csv("../data/hdgbs_pcascores.csv")
-pca_scores <- hd_pca$scores
-
-# Isolate eigenvalues (% variation explained for each PC axis).
-(pc_var <- c(hd_pca$eig/sum(hd_pca$eig)*100)[1:5]); barplot(hd_pca$eig)
-
-# Read in population coordinates for colours later on.
-# Have to make some 3-letter codes into 4-letter codes. 
-coords <- read.table("../data/ch2023_sequenced.txt", sep = "\t", header = T) %>% 
-  mutate(short = str_to_title(substr(Population, start = 1, stop = 3))) 
-coords[coords$Population == "TAKHANNE_RIVER", "short"] <- "Takha"
-coords[coords$Population == "KILDALA_RIVER" , "short"] <- "Kild"
-
-
-locs <- read.csv("../data/landgen_chinook_indvs.csv") %>% 
-  mutate(site_full = gsub("[[:space:]]Brood", "", site_full))
-locs[locs$site_full == "Upper Pitt", "site_full"] <- "Pitt"
-
-# Isolate individual-based PCA vales and combine with geographical information.
-pc_scores <- as.data.frame( hd_pca$scores) %>% 
-  rownames_to_column(var = "fish_ID") %>% 
-  merge(., locs, by = "fish_ID") %>% 
-  merge(., coords, by.x = "site_full", by.y = "Site") %>% 
-  arrange(desc(Latitude)) %>% # For ggplot colouring. 
-  mutate(site_full = factor(reorder(site_full, Latitude))) 
-
-# Plot PCA scores and colour by population witcat ../01   ls -l
-#h dark = south, light = north.
-(snp_pca <- ggplot(data = pc_scores, 
-       aes(x = PC1, y = PC2, group = site_full, fill = factor(Latitude))) +
-  geom_point(shape = 21, size = 3/2) +
-    labs(x = "PC1 (55.6%)", y = "PC2 (2.3%)") +
-  labs(x = paste0("PC1 (", round(pc_var[1], 1), "%)"),
-       y = paste0("PC2 (", round(pc_var[2], 1), "%)")) +
-  theme_bw() +
-  theme(legend.title = element_blank(),
-        legend.position = "right") +
-  scale_fill_manual(values = alpha(c(viridis_pal(option = "D")(length(unique(pc_scores$site_full)))), 3/4),
-                    labels = levels(pc_scores$site_full)) +
-  guides(fill=guide_legend(ncol = 3, reverse = TRUE)))
-
-ggsave("../plots/pca_fillscale.tiff", dpi = 300, width = 8, height = 5)
-
-ggplotly(snp_pca)
-
+# PCA Experimentation ----------------------------------------------------------
 
 ggplot(data = pc_scores,
        aes(x = site_full, y = PC1)) +
@@ -257,49 +290,4 @@ qdf <- as.data.frame(LEA::Q(ch_admix, K = as.numeric(opt_snmf$K),
   scale_y_continuous(expand = c(0,0)))
 
 ggsave("../plots/q_cols.tiff", dpi = 300, width = 8, height = 5)
-
-# Part 4: Genetic differentiation ----------------------------------------------
-
-# Compute pairwise Fst values. Takes a while. Save locally.
-gendist <- dartR::gl.fst.pop(hdgl_sub, nclusters = 16)
-write.csv(gendist, "../data/fst_matrix.csv", row.names = T)
-# gendist <- read.csv("../data/fst_matrix.csv", row.names = 1)
-
-
-# Convert to long formfor plotting purposes. 
-gdlf <- gendist %>% 
-  as.data.frame(row.names = c(rownames(.))) %>% 
-  rownames_to_column("Var1") %>% 
-  pivot_longer(-Var1, names_to = "Var2", values_to = "Value") %>% 
-  mutate(Var1 = factor(Var1, levels = rownames(gendist)), 
-         Var2 = factor(Var2, levels = rownames(gendist))) %>% 
-  filter(!is.na(Value) & !is.na(Var2))
-
-# Plot pairwise FST heat map. 
-ggplot(data = gdlf, aes(Var1, Var2)) +
-  geom_tile(aes(fill = Value), colour = "grey80") +
-  scale_fill_gradient(low = "#12C7EB5E", high = "#0F37D6D8") +
-  theme_bw() + labs(x = NULL, y = NULL, 
-                    fill = expression(paste(F[ST]))) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 1/5),
-        axis.text   = element_text(size = 7),
-        legend.position = c(1/10, 17/20),
-        legend.box.background = element_rect(colour = "black", fill = "white"),
-        panel.grid = element_line(colour = "gray97")) +
-  guides(fill = guide_colorbar(frame.colour = "black", ticks.colour = "black"))
-
-ggsave("../plots/fst_heatmap.tiff", dpi = 300,
-       width = 7, height = 7)
-
-# FST summary.
-summary(gdlf$Value)
-hist(gdlf$Value, breaks = nrow(gendist), main = NULL, xlab = "FST")
-
-
-
-# Part 5: NJTree ---------------------------------------------------------------
-
-library(ape)
-nj <- dartR::gl.tree.nj(x = hdgl)
-plot(ape::unroot(nj), type = "unrooted", cex = 1, edge.width = 2, lab4ut = "axial")
 

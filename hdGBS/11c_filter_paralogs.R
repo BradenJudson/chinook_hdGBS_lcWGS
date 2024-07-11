@@ -36,7 +36,11 @@ ggsave("./stats/hdplot_fig.tiff", dpi = 300,
        width = 10, height = 8)
 
 # Write putative paralog positions to directory. 
-# Exclude using vcftools --exclude-positions
-write.table(HDplotResults[HDplotResults$SNP == "Duplicate", c("CHROM", "POS")],
+# Have to format as per PLINK requirements. Column 4 is arbitrary.
+write.table(HDplotResults[HDplotResults$SNP == "Duplicate", c("CHROM", "POS")] %>% 
+              mutate(POS2 = POS, AR = rownames(.)),
             "./stats/duplicateSNP_IDs.txt", sep = "\t", quote = F, 
             row.names = F, col.names = F)
+
+# Filter using above.
+system("plink.exe --vcf ../data/snps_maf001.vcf --aec --exclude range ./stats/duplicateSNP_IDs.txt --recode vcf --out ../data/snps_maf001_singletons")

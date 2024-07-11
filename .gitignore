@@ -40,3 +40,8 @@ data/maximum_imputed_GLs.csv
 data/imputed_histogram_data.csv
 data/original_histogram_data.csv
 data/deltaGP.csv
+**.eigenval
+**.eigenvec
+**.raw
+**.log
+**.nosex
