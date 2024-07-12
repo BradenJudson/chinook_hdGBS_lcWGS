@@ -50,8 +50,9 @@ listvals <- lapply(listlats, function(x) x(pcavectors2$Latitude))
                             min.segment.length = 0, box.padding = 1/2,
                             aes(x = V1A, y = V2A, label = site_full), 
                             inherit.aes = FALSE) +
+    labs(x = "PC2", y = "PC3") +
   labs(x = paste0("PC1 (", round(varPC1, 1), "%)"),
-       y = paste0("PC2 (", round(varPC2, 1), "%)")) + 
+       y = paste0("PC2 (", round(varPC2, 1), "%)")) +
   theme(legend.position = "top", legend.title = element_blank(),
         legend.text = element_text(size = 11)) +
   guides(fill = guide_colorbar(barwidth = 25, label = T, reverse = T, 

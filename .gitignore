@@ -45,3 +45,5 @@ data/deltaGP.csv
 **.raw
 **.log
 **.nosex
+**.in
+**.out
