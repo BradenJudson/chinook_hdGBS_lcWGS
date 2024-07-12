@@ -158,12 +158,13 @@ hist(freqs$diff, main = NULL, xlab = "Difference in allele frequency")
 
 # AF Comparisons ---------------------------------------------------------------
 
-(frq_files <- paste0("./data/", list.files(pattern = ".*\\.frq", path = "./data")))
+# Deal with allele frequencies output from actual genotypes (via vcftools) first.
+(frq_files <- paste0("./data/", list.files(pattern = ".*\\.frq", path = "./data"))[1:2])
 
 files <- lapply(frq_files, read_table,
                 col_names = c("CHROM", "POS", "N_ALLELES", 
                               "N_CHR", "MajAll", "MinAll")) %>% 
-  `names<-`(.,c("hdGBS", "lcWGS_imputed", "lcWGS")) %>% 
+  `names<-`(.,c("hdGBS", "lcWGS_imputed")) %>% 
   lapply(., function(x) x %>% filter(MajAll != "{ALLELE:FREQ}") %>% 
            mutate(MajAF  = as.numeric(sub(".*:", "", MajAll)),
                   MajNuc = as.factor(substr(MajAll, start = 0, stop = 1)),
@@ -173,99 +174,110 @@ files <- lapply(frq_files, read_table,
            filter(genPos %in% hd_pos) %>% 
            select(!c("MajAll", "MinAll", "N_CHR", "N_ALLELES", "genPos")))
 
+
+# Process allele frequencies derived from genotype likelihoods second.
+# Formatting is different and requires some modification for consistency.
+LCAFs <- read_table("../data/lcafs_maf005.mafs", skip = 1,
+                           col_names = c("CHROM", "POS", "MinAF")) %>% 
+  filter(!is.na(MinAF)) %>% mutate(MinAF = as.numeric(MinAF),
+                                   MajAF = 1-MinAF,
+                                   genPos = paste0(CHROM, "_", POS)) %>% 
+  filter(genPos %in% hd_pos) %>% select(c("CHROM", "POS", "MajAF"))  
+
+# Join allele frequency files together for all 3 datasets.
 afs <- purrr::map_df(files, ~as.data.frame(.x), .id = "dataset") %>% 
-  select(c(1:4)) %>% 
-  pivot_wider(names_from = dataset, values_from = MajAF) %>% 
-  pivot_longer(cols = c("lcWGS", "hdGBS")) %>% 
-  mutate(diff = abs(lcWGS_imputed - value))
+  select(c(1:4)) %>% rbind(., LCAFs %>% mutate(dataset = "lcWGS")) %>% 
+  pivot_wider(names_from = dataset, values_from = MajAF) 
 
 write.csv(afs, "allele_frequencies.csv", row.names = F)
 
-(lm1 <- lm(data = afs[afs$name == "hdGBS",], lcWGS_imputed ~ value)); summary(lm1)
-
-(afp <- ggplot(data = afs, aes(x = lcWGS_imputed, y = value, group = name)) +
-  theme_bw() +stat_poly_eq(use_label(c("R2")),label.x = "right", label.y = "bottom") +
-  geom_point(alpha = 1/6) +
-  facet_grid(~ name) +
-  geom_abline(slope = 1, intercept = 0, colour = "deepskyblue3", linetype = 2) +
-  geom_smooth(method= "lm", colour = "deepskyblue3") +
-  labs(x = "Imputed lcWGS major allele frequency",
-       y = "Major allele frequency"))
-
-ggsave("../plots/imputation_full.tiff", dpi = 300, height = 8, width = 15)
-
-(lc_hd <- purrr::map_df(files[c("hdGBS", "lcWGS")], 
-                       ~as.data.frame(.x), .id = "dataset") %>%
-  select(c(1:4)) %>% 
-  pivot_wider(names_from = dataset, values_from = MajAF) %>% 
-  ggplot(data = ., aes(x = lcWGS, y = hdGBS)) + 
-    geom_point(alpha = 1/6) +
+# Write a function plot allele frequencies for common SNPs.
+af_comp <- \(x, y) {
+  (plot <- ggplot(data = afs, aes(x = {{x}}, y = {{y}})) +
+     theme_bw() + geom_point(alpha = 1/6)  +
+     geom_smooth(method= "lm", colour = "deepskyblue3") +
+     stat_poly_eq(use_label(c("R2")), label.x = "right", label.y = "bottom") +
     geom_abline(slope = 1, intercept = 0, colour = "deepskyblue3", linetype = 2) +
-  theme_bw() + geom_smooth(method = "lm", se = FALSE,
-                           colour = "deepskyblue3") +
-  labs(x = "lcWGS major allele frequency",
-       y = "hdGBS major allele frequency") +
-  stat_poly_eq(use_label(c("R2")),label.x = "right",
-               label.y = "bottom"))
+     labs(x = paste(gsub("_", " ", rlang::as_label(eval(parse(text=enquo(x)))[[2]])), "major allele frequency"),
+          y = paste(gsub("_", " ", rlang::as_label(eval(parse(text=enquo(y)))[[2]])), "major allele frequency")))
+  
+    return(plot)
+    
+    }
 
-ggsave("../plots/hdGBS.tiff", dpi = 300, height = 8, width = 12)
+# Join plots of interest together.
+cowplot::plot_grid(plotlist = list(
+  af_comp(x = hdGBS, y = lcWGS_imputed),
+  af_comp(x = hdGBS, y = lcWGS),
+  af_comp(x = lcWGS, y = lcWGS_imputed)), 
+  ncol = 1, nrow = 3)
 
-# Have to manually add R2 here for some reason. Some issue with faceting. 
-cowplot::plot_grid(lc_hd, afp, ncol = 1) +
-  annotate(geom = 'text', x = 0.9, y = 0.065, 
-           label = bquote("R^2 == 0.99"), parse = TRUE)
-
-ggsave("../plots/afs_comparisons.tiff", dpi = 300, height = 12, width = 12)
-
-
-################################################################################
-################# Part II: All SNPs ############################################
-################################################################################
-
-# All SNPs ----------------------------------------------------------------
+ggsave("../plots/afs_comparisons.png", dpi = 300, height = 16, width = 8)
 
 
-rff <- function(x) x %>% filter(MajAll != "{ALLELE:FREQ}") %>% 
-  mutate(MajAF = as.numeric(sub(".*:", "", MajAll)),
-         MajNuc  = as.factor(substr(MajAll, start = 0, stop = 1)),
-         MinAF = as.numeric(sub(".*:", "", MinAll)),
-         MinNuc = as.factor(substr(MinAll, start = 0, stop = 1))) %>% 
-  select(!c("MajAll", "MinAll", "N_CHR", "N_ALLELES"))
 
 
-LCo <- rff(x = read_table("../data/global_original_freqGLs.frq",
-                  col_names = c("CHROM", "POS", "N_ALLELES", 
-                                "N_CHR", "MajAll", "MinAll")))
-
-LCi <- rff(x = read_table("../data/global_imputed_freqGLs.frq",
-                          col_names = c("CHROM", "POS", "N_ALLELES", 
-                                        "N_CHR", "MajAll", "MinAll"))) %>% 
-  rename(iMajAF = "MajAF", iMajNuc = "MajNuc", 
-         iMinAF = "MinAF", iMinNuc = "MinNuc")
 
 
-fAFs <- merge(LCo, LCi, by = c("CHROM", "POS")) %>% 
-  pivot_longer(cols = c(MajAF, iMajAF))  %>% 
-  mutate(dataset = case_when(
-    name == "MajAF"  ~ "lcWGS",
-    name == "iMajAF" ~ "Imputed lcWGS")) 
+
+# ################################################################################
+# ################# Part II: All SNPs ############################################
+# ################################################################################
+# 
+# # All SNPs ----------------------------------------------------------------
+# 
+# 
+# rff <- function(x) x %>% filter(MajAll != "{ALLELE:FREQ}") %>% 
+#   mutate(MajAF = as.numeric(sub(".*:", "", MajAll)),
+#          MajNuc  = as.factor(substr(MajAll, start = 0, stop = 1)),
+#          MinAF = as.numeric(sub(".*:", "", MinAll)),
+#          MinNuc = as.factor(substr(MinAll, start = 0, stop = 1))) %>% 
+#   select(!c("MajAll", "MinAll", "N_CHR", "N_ALLELES"))
+# 
+# 
+# # LCo <- rff(x = read_table("../data/global_original_freqGLs.frq",
+# #                   col_names = c("CHROM", "POS", "N_ALLELES", 
+# #                                 "N_CHR", "MajAll", "MinAll")))
+# 
+# LCo <- read_table("../data/lcafs_maf005.mafs", skip = 1,
+#                   col_names = c("CHROM", "POS", "MinAF")) %>% 
+#   filter(!is.na(MinAF)) %>% mutate(MinAF = as.numeric(MinAF),
+#                                    MajAF = 1-MinAF,
+#                                    genPos = paste0(CHROM, "_", POS)) %>% 
+#   filter(!rownames(.) %in% c(43830, 82753, 121301)) 
+# 
+# LCi <- rff(x = read_table("../data/global_imputed_freqGLs.frq",
+#                           col_names = c("CHROM", "POS", "N_ALLELES", 
+#                                         "N_CHR", "MajAll", "MinAll"))) %>% 
+#   rename(iMajAF = "MajAF", iMajNuc = "MajNuc", 
+#          iMinAF = "MinAF", iMinNuc = "MinNuc") %>% 
+#   mutate(GP = paste0(CHROM, "_", POS))
+# 
+# 
+# fAFs <- merge(LCo, LCi, by = c("CHROM", "POS")) %>% 
+#   pivot_longer(cols = c(MajAF, iMajAF))  %>% 
+#   mutate(dataset = case_when(
+#     name == "MajAF"  ~ "lcWGS",
+#     name == "iMajAF" ~ "Imputed lcWGS")) 
+# 
+# 
+# (lc_lm <- ggplot(data = fAFs) +
+#   geom_histogram(aes(x = value),  bins = 40,
+#                 colour = "black", fill = "grey80") +
+#   facet_wrap(~dataset, ncol = 1,
+#              strip.position = "right") +
+#   labs(x = "Major allele frequency",
+#        y = "Number of SNPs") +
+#   theme_bw() + 
+#   theme(strip.background = element_blank()))
+# 
+# ggsave("../plots/majallele_frq_lowcov.tiff", dpi = 300, 
+#        width = 10, height = 8)
+# 
+# (summ <- fAFs %>% 
+#   group_by(dataset) %>% 
+#   summarise(mean   = mean(value),
+#             stdev  = sd(value),
+#             median = median(value)))
 
 
-(lc_lm <- ggplot(data = fAFs) +
-  geom_histogram(aes(x = value),  bins = 40,
-                colour = "black", fill = "grey80") +
-  facet_wrap(~dataset, ncol = 1,
-             strip.position = "right") +
-  labs(x = "Major allele frequency",
-       y = "Number of SNPs") +
-  theme_bw() + 
-  theme(strip.background = element_blank()))
-
-ggsave("../plots/majallele_frq_lowcov.tiff", dpi = 300, 
-       width = 10, height = 8)
-
-(summ <- fAFs %>% 
-  group_by(dataset) %>% 
-  summarise(mean   = mean(value),
-            stdev  = sd(value),
-            median = median(value)))
