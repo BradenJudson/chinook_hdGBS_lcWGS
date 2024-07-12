@@ -7,7 +7,7 @@ nc <- 12 # Number of cores to use in parallel functions.
 
 # Read in genetic data and convert to genlight object.
 hdgbs <- read.vcfR("../data/snps_maf001_singletons.vcf")
-hdgl <- vcfR2genlight(hdgbs)
+(hdgl <- vcfR2genlight(hdgbs))
 
 
 # Individuals and sites --------------------------------------------------------
@@ -30,7 +30,7 @@ sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>%
 # Part 1: PCA w/ plink @ maf > 0.01 --------------------------------------------
 
 # First need to add PLINK to .Renviron, then run the PCA on the VCF. Much faster than alternatives.
-system("plink.exe --vcf ../data/snps_maf001_singletons.vcf --aec --pca --out ../data/snps_maf001_singletons")
+system("plink.exe --vcf ../data/snps_maf001_singletons.vcf --aec --pca 376 --out ../data/snps_maf001_singletons")
 
 format_eigenvec <- \(eigenvec_file) {
   df <- read.table(eigenvec_file) %>% .[,2:ncol(.)] %>%         # Remove unnecessary first column.
@@ -51,6 +51,7 @@ eigenval001 <- scan("../data/snps_maf001_singletons.eigenval")
 # Function for plotting PC scores.
 pc_plot <- function(maf, x, y) {
   
+  # Isolate variables as either strings or objects as needed.
   xPC <- rlang::as_label(eval(parse(text=enquo(x)))[[2]])
   yPC <- rlang::as_label(eval(parse(text=enquo(y)))[[2]]) 
   scores_df <- get(paste0("pc_scores", maf), envir = .GlobalEnv)
@@ -59,23 +60,24 @@ pc_plot <- function(maf, x, y) {
   # Percent of total variation explained by each axis (approximate).
   pc_var <- eigenvals/sum(eigenvals)*100
   
+  # Construct the plot itself.
   (pca <- ggplot(data = scores_df,
                  aes(x = {{x}}, y = {{y}}, group = site_full, 
                      fill = factor(Latitude))) +
       geom_point(shape = 21, size = 3/2) + theme_bw() +
       theme(legend.title = element_blank(),
             legend.position = "bottom") + guides(fill = guide_legend(nrow = 5, byrow = TRUE)) +
-      labs(x = paste0(xPC, " (", round(pc_var[as.numeric(str_sub(start = 3, end = 3, xPC))], 1), "%)"),
-           y = paste0(yPC, " (", round(pc_var[as.numeric(str_sub(start = 3, end = 3, yPC))], 1), "%)")) +
+      labs(x = paste0(xPC, " (", round(pc_var[as.numeric(str_sub(start = 3, end = 3, xPC))], 2), "%)"),
+           y = paste0(yPC, " (", round(pc_var[as.numeric(str_sub(start = 3, end = 3, yPC))], 2), "%)")) +
       scale_fill_manual(values = c(viridis_pal(option = "D")(length(unique(scores_df$site_full)))),
-                        labels = levels(unique(scores_df$site_full)))); return(pca)
-  
+                        labels = levels(unique(scores_df$site_full))))
+  return(pca)
   }
 
 # Return all combinations of PCs 1-3.
-(pca005 <- ggpubr::ggarrange( pc_plot(maf = "005", x = PC1, y = PC2),
-                              pc_plot(maf = "005", x = PC1, y = PC3),
-                              pc_plot(maf = "005", x = PC2, y = PC3),
+(pca005 <- ggpubr::ggarrange( pc_plot(maf = "001", x = PC1, y = PC2),
+                              pc_plot(maf = "001", x = PC1, y = PC3),
+                              pc_plot(maf = "001", x = PC2, y = PC3),
                               align = "h", ncol = 3, legend = "top",
                               common.legend = TRUE, labels = c("a)")))
 
@@ -124,15 +126,15 @@ star_plot <- function(x, y) {
 
 # Part 2: PCA w/ plink @ maf > 0.05 --------------------------------------------
 
-system("plink.exe --vcf ../data/snps_maf001_singletons.vcf --maf 0.05 --aec --pca --out ../data/snps_maf005_singletons")
+system("plink.exe --vcf ../data/snps_maf001_singletons.vcf --maf 0.05 --aec --pca 376 --out ../data/snps_maf005_singletons")
 
 pc_scores005 <- format_eigenvec("../data/snps_maf005_singletons.eigenvec")
 
 eigenval005 <- scan("../data/snps_maf005_singletons.eigenval")
 
-(pca001 <- ggpubr::ggarrange( pc_plot(maf = "001", x = PC1, y = PC2),
-                              pc_plot(maf = "001", x = PC1, y = PC3),
-                              pc_plot(maf = "001", x = PC2, y = PC3),
+(pca001 <- ggpubr::ggarrange( pc_plot(maf = "005", x = PC1, y = PC2),
+                              pc_plot(maf = "005", x = PC1, y = PC3),
+                              pc_plot(maf = "005", x = PC2, y = PC3),
                               align = "h", ncol = 3, legend = "none",
                               labels = c("b)")))
 
