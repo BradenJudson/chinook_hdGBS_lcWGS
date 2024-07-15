@@ -85,45 +85,6 @@ pc_plot <- function(maf, x, y) {
 ggsave("../plots/hdgbs_pca_maf001.tiff", dpi = 300, width = 12, height = 6)
 
 
-star_plot <- function(x, y) {
-
-  xPC <- rlang::as_label(eval(parse(text=enquo(x)))[[2]])
-  yPC <- rlang::as_label(eval(parse(text=enquo(y)))[[2]])
-
-  pc_var <- eigenval/sum(eigenval)*100
-
-  pc_popav <- pc_scores %>%
-    group_by(site_full) %>%
-    summarise(V1A = mean(PC1),
-              V2A = mean(PC2))
-
-  pcavectors2 <- merge(pc_scores, pc_popav, by = "site_full") %>%
-    arrange(Latitude)
-
-  levels(pcavectors2$site_full) <- c(unique(pc_scores$site_full))
-
-
-  (pca <- ggplot(data = pcavectors2) +
-      geom_segment(aes(x = V1A, y = V2A,
-                       xend = {{x}}, yend = {{y}}, group = site_full,
-                       colour = factor(Latitude)), linewidth = 3/4, alpha = 2/3) +
-      scale_color_manual(values = c(viridis_pal(option = "D")(length(unique(pcavectors2$site_full)))),
-                        labels = levels((pcavectors2$site_full))) +
-      theme_bw() +
-      # scale_color_gradient(guide = 'none') +
-      ggrepel::geom_label_repel(data = pc_popav, max.overlaps = Inf,
-                                min.segment.length = 0, box.padding = 1/2,
-                                aes(x = V1A, y = V2A, label = site_full),
-                                inherit.aes = FALSE) +
-      labs(x = paste0(xPC, " (", round(pc_var[as.numeric(str_sub(start = 3, end = 3, xPC))], 1), "%)"),
-           y = paste0(yPC, " (", round(pc_var[as.numeric(str_sub(start = 3, end = 3, yPC))], 1), "%)")) +
-      theme(legend.position = "none", legend.title = element_blank(),
-            legend.text = element_text(size = 11)))
-
-  return(pca)
-
-}; star_plot(x = PC1, y = PC2)
-
 # Part 2: PCA w/ plink @ maf > 0.05 --------------------------------------------
 
 system("plink.exe --vcf ../data/snps_maf001_singletons.vcf --maf 0.05 --aec --pca 376 --out ../data/snps_maf005_singletons")
