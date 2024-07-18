@@ -1,7 +1,7 @@
 setwd("~/ots_landscape_genetics/comp")
 
-library(tidyverse); library(vegan); #library(vcfR)
-library(data.table); library(psych); library(broom)
+library(tidyverse); library(vegan); library(sf); library(adespatial)
+library(data.table); library(psych); library(viridis)
 
 # From Brenna R. Forester at: https://popgen.nescent.org/2018-03-27_RDA_GEA.html
 source("../scripts/outliers.R")
@@ -32,26 +32,29 @@ rf <- function(dir) paste0(dir, list.files(pattern = ".*.frq",
   select(c("Gpos", "MajAF")) %>% 
   pivot_wider(values_from = MajAF, names_from = Gpos)
 
-temp  <- paste0("../data/pop_frq/hdgbs/", list.files(path = "../data/pop_frq/hdgbs"))
+temp  <- paste0("../data/pop_frq/hdgbs_not_pruned/", 
+                list.files(path = "../data/pop_frq/hdgbs_not_pruned"))
 freqs <- as.data.frame(do.call(rbind, lapply(temp, rf))) %>% 
-  `rownames<-`(., gsub("\\_.*","", str_sub(temp, start = 17)))
+  `rownames<-`(., gsub("\\_.*","", str_sub(temp, start = 34)))
 
 
 # Site data --------------------------------------------------------------------
 
 # Read in site information and format accordingly.
 sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>%
-  mutate(site = tools::toTitleCase(tolower(gsub("\\_.*", "", Population)))) %>%
-  .[, c((ncol(.)-3):ncol(.))] %>% filter(site %in% rownames(bioclim)) %>% arrange(site)
+  mutate(Site = gsub("[[:space:]]", "", Site)) %>%
+  relocate(Site, .after = last_col()) %>% 
+  .[, c((ncol(.)-3):ncol(.))] %>% filter(Site %in% rownames(freqs)) %>% arrange(Site)
 
-sum(sites$site == rownames(bioclim)) == nrow(sites)
+sum(sites$Site == rownames(freqs)) == nrow(sites)
 
-# Compute a linear distance matrix accounting for the curvature of the earth.
+
+# Compute a linear distance (m) matrix accounting for the curvature of the earth.
 dm <- st_distance(st_as_sf(sites[,c(4,3,2)], coords = 2:3, crs = 4326))
 
 # Convert distance matrix into distance-based Moran's eigenvector maps.
-db <- create.dbMEM.model(coord = sites2[,c(2:3)], nsites = nrow(sites2)) %>% 
-  as.data.frame() %>% `rownames<-`(., c(sites2$site)) # Formatting.
+db <- create.dbMEM.model(coord = sites[,c(2:3)], nsites = nrow(sites)) %>% 
+  as.data.frame() %>% `rownames<-`(., c(sites$site)) # Formatting.
 
 nmod  <- rda(freqs ~ 1, db) # Null model.
 fmod  <- rda(freqs ~ ., db) # Full model.
@@ -64,14 +67,22 @@ summary(optdb)$call # Prints formula with selected predictor variables.
 # Read in and format bioclimatic data for each site.
 bioclim <- read.csv("../data/ch_bioclim.csv") %>% 
   filter(is.na(ssp)) %>% .[,1:(ncol(.)-2)] %>% 
-  mutate(Site = tools::toTitleCase(tolower(gsub("\\_.*", "", Site)))) %>% 
-  filter(Site %in% rownames(freqs)) %>% arrange(Site) %>% column_to_rownames("Site")
+  mutate(Site = gsub("Qualicum", "BigQualicum", gsub(" ", "", 
+                     tools::toTitleCase(tolower(gsub("\\_", " ", 
+                gsub("_FALL", "", gsub("_HATCHERY_FALL" ,"", 
+                gsub("\\-.*", "", gsub("\\_CREEK*", "", 
+                gsub("\\_RIVER*", "", Site))))))))))) %>% 
+  filter(Site %in% rownames(freqs)) %>% arrange(Site) %>% 
+  column_to_rownames("Site")
+
+sum(bioclim$Site %in% sites$Site) == nrow(sites)
 
 # Heatmap/clustering of bioclimatic data and Latitude.
 png("../plots/predictor_cors.png", width = 1200, height = 1000, res = 100)
-bioclim_sub <- as.matrix(cbind(subset(bioclim, select = c(bio2, bio7, bio8,
-                                      bio10, bio13, bio15, bio18))))
-gplots::heatmap.2(cor(bioclim_sub)^2, trace = 'none') ; dev.off()
+bioclim_sub <- as.matrix(cbind(subset(bioclim, select = c(bio2, bio1, 
+                                      bio10, bio13, bio15)),
+                               subset(db, select = c(dbMEM.1, dbMEM.2, dbMEM.8))))
+gplots::heatmap.2(cor(bioclim_sub)^2, trace = 'none', margins = c(7,7)) ; dev.off()
 
 sum(rownames(freqs) == rownames(bioclim)) == nrow(bioclim) 
 
@@ -84,15 +95,15 @@ sum(rownames(freqs) == rownames(bioclim)) == nrow(bioclim)
 
 
 # Define and run RDA.
-(hdRDA <- vegan::rda(freqs ~ bio2 +  bio8 + bio10 + bio13 + bio15 + Condition(dbMEM.1 + dbMEM.2 + dbMEM.8),
+(hdRDA <- vegan::rda(freqs ~ bio4 + bio2 + bio5 + bio8 + bio16 + bio15 + Condition(dbMEM.1 + dbMEM.2 + dbMEM.8),
                      data = cbind(bioclim, db), scale = T)) # Scale and center predictors.
-RsquareAdj(hdRDA) # Adjusted and non-adjusted model R2 values = 0.239 and 0.336, respectively.
+RsquareAdj(hdRDA) # Adjusted and non-adjusted model R2 values = 0.158 and 0.067, respectively.
 (hd_terms <- anova.cca(hdRDA, by = "terms")) # Reports significance of each term.
 (hd_full  <- anova.cca(hdRDA)) # Test and report significance of the full model.
 (hd_axis  <- anova.cca(hdRDA, by = "axis"))  # Takes an incredible amount of time to run. RDA1 and 2 significant.
 (eigvsumm <- round(summary(eigenvals(hdRDA, model = "constrained")), 3)) # % var explained by each axis.
 screeplot(hdRDA) # Variation explained by each RDA axis.
-vif.cca(hdRDA)   # Check model variance inflation factors.
+round(vif.cca(hdRDA), 2) # Check model variance inflation factors.
 
 # Define a function for extracting RDA elements and plotting the results.
 # Will use this same function with the other data sources too.
@@ -126,7 +137,7 @@ rda.full <- \(model, dataset) {
   bio_vars_sub <- as.data.frame(bioclim_sub) %>% select(starts_with("bio"))
   
   # Make an empty matrix to populate in the following for loop.
-  cand_mat <- matrix(nrow = nrow(cand), ncol = ncol(bio_vars_sub)) %>% 
+  cand_mat <- matrix(nrow = nrow(all_cands), ncol = ncol(bio_vars_sub)) %>% 
     `colnames<-`(., c(colnames(bio_vars_sub)))
   
   # Estimate the correlation between the allele frequency of each outlier SNP and each bioclim variable.
@@ -137,8 +148,8 @@ rda.full <- \(model, dataset) {
   # Add candidate SNP information to the correlation matrix computed above.
   cand_df_cor <- cbind.data.frame(all_cands, cand_mat) %>% rowwise() %>% 
     mutate(correlation = max(c_across(starts_with("bio")), na.rm = TRUE),
-           predictor = names(.[6:11])[which.max(c_across(6:11))])
-  
+           predictor = names(.[6:(5+ncol(bio_vars_sub))])[which.max(c_across(6:(5+ncol(bio_vars_sub))))])  
+
   # Count how many outlier SNPs associate with each predictor variable.
   print(table(cand_df_cor$predictor))
   
@@ -163,7 +174,7 @@ rda.full <- \(model, dataset) {
   
   # Order site scores with respect to Latitude and join with RDA loadings.
   site_scores <- merge(sites, as.data.frame(scores(rdamodel, display = 'sites', scaling = 3)),
-                       by.x = "site", by.y = 0) %>% arrange(Latitude) %>% mutate(Latitude = as.factor(Latitude))
+                       by.x = "Site", by.y = 0) %>% arrange(Latitude) %>% mutate(Latitude = as.factor(Latitude))
   
   # Script for scaling = 3 plot.
   (rda_scale3 <- ggplot() +
@@ -171,8 +182,8 @@ rda.full <- \(model, dataset) {
                         choices = c(1,2), scaling = 3)),
                  aes(x = RDA1, y = RDA2), colour = 'grey70', shape = 21, fill = 'grey90') +
       geom_point(data = site_scores, aes(x = RDA1, y = RDA2, fill = factor(Latitude)), shape = 21, size = 2) +
-      scale_fill_manual(values = c(viridis_pal(option = "D")(length(unique(site_scores$site)))),
-                        labels = levels(unique(site_scores$site))) +
+      scale_fill_manual(values = c(viridis_pal(option = "D")(length(unique(site_scores$Site)))),
+                        labels = levels(unique(site_scores$Site))) +
       geom_segment(data = scores(rdamodel, display = 'bp', choices = c(1,2), scaling = 3),
                  aes(xend = RDA1*25, yend = RDA2*25, x = 0, y = 0), colour = '#0868ac',
                  lineend = "round", arrow = arrow(length = unit(0.1, "inches"))) +
@@ -204,7 +215,7 @@ rda.full <- \(model, dataset) {
       geom_text(data = as.data.frame(scores(rdamodel, display = 'bp', choices = c(1,2), 
                                             scaling = 1)) %>% rownames_to_column("bio"), colour = '#0868ac',
                 aes(x = 1.06*RDA1, y = 1.06*RDA2, label = bio)) + theme_bw() +
-      theme(legend.title = element_blank(), legend.position = c(0.08, 0.12), legend.background = element_blank())) 
+      theme(legend.title = element_blank(), legend.position = c(0.08, 0.8), legend.background = element_blank())) 
   
   # Return base data frame and two ggplot objects as a list.
   return(list(RDAdf = RDAdf, rda_scale3 = rda_scale3, rda_scale1 = rda_scale1))
@@ -260,19 +271,49 @@ lcafs <- paste0("../lcWGS/pop_afs/", list.files(pattern = "*.txt",
 
 # Part III: Imputed lcWGS data -------------------------------------------------
 
-temp <- paste0("../data/pop_frq/imputed_lcwgs/", list.files(path = "../data/pop_frq/imputed_lcwgs"))
+# Data are LD-pruned.
+temp <- paste0("../data/pop_frq/imputed_lcwgs/", 
+        list.files(path = "../data/pop_frq/imputed_lcwgs"))
 implc <- as.data.frame(do.call(rbind, lapply(temp, rf))) %>% 
-  `rownames<-`(., gsub("\\_.*","", str_sub(temp, start = 17)))
+  `rownames<-`(., gsub("\\_.*","", str_sub(temp, start = 31)))
+
+# write.csv(implc, "../data/pop_frq/imputed_lcwgs_afs.csv", row.names = T)
+implc <- read.csv("../data/pop_frq/imputed_lcwgs_afs.csv") %>% 
+  filter(rownames(.) %in% sites$site)
+
+rownames(implc) == rownames(db)
+
+(lcImpRDA <- vegan::rda(implc ~ bio2 + bio3 + bio8 + bio10 + bio13 + bio15 + Condition(dbMEM.1 + dbMEM.2 + dbMEM.8),
+                        data = cbind(bioclim, db), scale = T))
+
+
+# Part IV: Imputed and subset lcWGS --------------------------------------------
+
+temp <- paste0("../data/pop_frq/imputed_hdgbs_subset/", 
+               list.files(path = "../data/pop_frq/imputed_hdgbs_subset"))
+implcsub <- as.data.frame(do.call(rbind, lapply(temp, rf))) %>% 
+  `rownames<-`(., gsub("San", "SanJuan", gsub("\\_.*","", str_sub(temp, start = 38)))) %>% 
+  filter(rownames(.) %in% rownames(bioclim)) %>% arrange(rownames(.))
+
+
+
+
+sum(rownames(implcsub) == rownames(bioclim))
+
+(lcImpRDA <- vegan::rda(implcsub ~ bio2 + bio8 + bio10 + bio13 + bio15 + Condition(dbMEM.1 + dbMEM.2 + dbMEM.8),
+                        data = cbind(bioclim, db), scale = T))
+vif.cca(lcImpRDA)
+RsquareAdj(lcImpRDA)
+lcImpRDA_output <- rda.full(model = lcImpRDA, dataset = "imputed_lcWGS")
+
+(lcimpsub_plots <- cowplot::plot_grid(plotlist = list(
+  lcImpRDA_output$rda_scale3, lcImpRDA_output$rda_scale1), 
+  ncol = 2, labels = c("a)", "b)")))
+ggsave("../plots/lcImpRDA_RDA13.tiff", width = 16, height = 8)
 
 ################################################################################
 # Comparisons ------------------------------------------------------------------
 ################################################################################
 
 # Outlier comparisons ----------------------------------------------------------
-
-# try using ggVennDiagram here?
-
-
-
-
 
