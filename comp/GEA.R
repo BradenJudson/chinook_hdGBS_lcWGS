@@ -6,7 +6,7 @@ library(data.table); library(psych); library(viridis)
 # From Brenna R. Forester at: https://popgen.nescent.org/2018-03-27_RDA_GEA.html
 source("../scripts/outliers.R")
 
-set.seed(240)
+set.seed(240) 
 
 
 # TO DO -------------------------------------------------------------------
