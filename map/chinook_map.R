@@ -152,3 +152,4 @@ ggdraw(plot = pnw) +
 
 ggsave("../plots/map_winset.tiff", dpi = 300, 
        width = 6, height = 6)
+

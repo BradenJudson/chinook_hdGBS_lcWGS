@@ -32,10 +32,10 @@ rf <- function(dir) paste0(dir, list.files(pattern = ".*.frq",
   select(c("Gpos", "MajAF")) %>% 
   pivot_wider(values_from = MajAF, names_from = Gpos)
 
-temp  <- paste0("../data/pop_frq/1_hdGBS_pruned_maf005_105k/", 
-                list.files(path = "../data/pop_frq/1_hdGBS_pruned_maf005_105k"))
+temp  <- paste0("../data/pop_frq/hdgbs_not_pruned/", 
+                list.files(path = "../data/pop_frq/hdgbs_not_pruned"))
 freqs <- as.data.frame(do.call(rbind, lapply(temp, rf))) %>% 
-  `rownames<-`(., gsub("\\_.*","", basename(temp)))
+  `rownames<-`(., gsub("\\_.*","", str_sub(temp, start = 34)))
 
 
 # Site data --------------------------------------------------------------------
@@ -91,22 +91,6 @@ sum(rownames(freqs) == rownames(bioclim)) == nrow(bioclim)
 # RDAs -------------------------------------------------------------------------
 ################################################################################
 
-# Part I: hdGBS data -----------------------------------------------------------
-
-
-# Define and run RDA.
-(hdRDA <- vegan::rda(freqs ~ bio2 + bio5 + bio8 + bio16 + bio15 + Condition(dbMEM.1 + dbMEM.2 + dbMEM.6 + dbMEM.3 + dbMEM.9 + dbMEM.5),
-                     data = cbind(bioclim, db), scale = T)) # Scale and center predictors.
-(hdRDA <- vegan::rda(freqs ~ bio4 + bio2 + bio5 + bio8 + bio16 + bio15 + Condition(dbMEM.1 + dbMEM.2 + dbMEM.8),
-                     data = cbind(bioclim, db), scale = T)) # Scale and center predictors.
-RsquareAdj(hdRDA) # Adjusted and non-adjusted model R2 values = 0.158 and 0.067, respectively.
-(hd_terms <- anova.cca(hdRDA, by = "terms")) # Reports significance of each term.
-(hd_full  <- anova.cca(hdRDA)) # Test and report significance of the full model.
-(hd_axis  <- anova.cca(hdRDA, by = "axis"))  # Takes an incredible amount of time to run. RDA1 and 2 significant.
-(eigvsumm <- round(summary(eigenvals(hdRDA, model = "constrained")), 3)) # % var explained by each axis.
-screeplot(hdRDA) # Variation explained by each RDA axis.
-round(vif.cca(hdRDA), 2) # Check model variance inflation factors.
-
 # Define a function for extracting RDA elements and plotting the results.
 # Will use this same function with the other data sources too.
 rda.full <- \(model, dataset) {
@@ -136,22 +120,21 @@ rda.full <- \(model, dataset) {
     mutate(chromosome = as.factor(gsub("_", "", chromosome)))
   
   # Only retain predictors (not conditioning variables).
-  bio_vars_sub <- noquote(attr(rdamodel$terms, "term.labels"))[1:length(attr(rdamodel$terms, "term.labels"))-1]
-  biodf <- bioclim[,c(bio_vars_sub)] # and the data itself
+  bio_vars_sub <- as.data.frame(bioclim_sub) %>% select(starts_with("bio"))
   
   # Make an empty matrix to populate in the following for loop.
-  cand_mat <- matrix(nrow = nrow(all_cands), ncol = length(bio_vars_sub)) %>% 
-    `colnames<-`(., c(bio_vars_sub))
+  cand_mat <- matrix(nrow = nrow(all_cands), ncol = ncol(bio_vars_sub)) %>% 
+    `colnames<-`(., c(colnames(bio_vars_sub)))
   
   # Estimate the correlation between the allele frequency of each outlier SNP and each bioclim variable.
   for (i in 1:nrow(cand_mat)) {
     nam <- all_cands[i, 2]; snp <- freqs[,nam]
-    cand_mat[i,] <- apply(biodf, 2, function(x) cor(x, snp)) } 
+    cand_mat[i,] <- apply(bio_vars_sub, 2, function(x) cor(x, snp)) } 
   
   # Add candidate SNP information to the correlation matrix computed above.
-  cand_df_cor <- cbind.data.frame(all_cands, cand_mat) %>% rowwise()  %>% 
+  cand_df_cor <- cbind.data.frame(all_cands, cand_mat) %>% rowwise() %>% 
     mutate(correlation = max(c_across(starts_with("bio")), na.rm = TRUE),
-           predictor = names(.[,as.vector(bio_vars_sub)])[which.max(c_across(as.vector(bio_vars_sub)))])  
+           predictor = names(.[6:(5+ncol(bio_vars_sub))])[which.max(c_across(6:(5+ncol(bio_vars_sub))))])  
 
   # Count how many outlier SNPs associate with each predictor variable.
   print(table(cand_df_cor$predictor))
@@ -225,15 +208,6 @@ rda.full <- \(model, dataset) {
   
 }
 
-# Run above function on the hdGBS RDA defined earlier.
-hdgbs_rda <- rda.full(model = hdRDA, data = "hdGBS")
-
-# Plot both scaling = 1 and scaling = 3 plot types. 
-(hdgbs_plots <- cowplot::plot_grid(plotlist = list(
-  hdgbs_rda$rda_scale3, hdgbs_rda$rda_scale1), 
-  ncol = 2, labels = c("a)", "b)")))
-ggsave("../plots/hdgbs_rdas13.tiff", width = 16, height = 8)
-
 # Quick function to plot where the outliers are throughout the genome.
 outlier_pos <- \(full_rda) {
   
@@ -253,75 +227,20 @@ outlier_pos <- \(full_rda) {
       theme(axis.text.x = element_text(angle = 90, vjust = 1/2)))
 }
 
-(hdgbs_outliers_positions <- outlier_pos(hdgbs_rda))
-ggsave("../plots/hdgbs_outlier_positions.tiff", width = 10, height = 6)
 
-
-
-# Part II: lcWGS data -----------------------------------------------------
 
 # Read in population-specific allele frequencies derived from genotype likelihoods.
 # Requires some awkward formatting and transposition to prepare for RDAs.
-lcafs <- paste0("../lcWGS/pop_afs/", list.files(pattern = "*.txt", 
-                                path = "../lcWGS/pop_afs/")) %>% set_names(.) %>% 
+temp <- paste0("../lcWGS/data/pop_frq/lcwgs_pruned/", list.files(pattern = "*.txt", 
+                                path = "../lcWGS/data/pop_frq/lcwgs_pruned")) %>% set_names(.) %>% 
   map_df(read_table, .id = "Population") %>% rename("MinAF" = knownEM) %>% 
   mutate(Population = tools::toTitleCase(gsub("\\.txt", "", str_sub(start = 18, Population))),
          gPosition  = paste0(chromo, "_", position)) %>% 
   select(c("Population", "MinAF", "gPosition")) %>% 
   pivot_wider(values_from = MinAF, names_from = gPosition) %>%  
-  arrange(Population) %>% column_to_rownames("Population")
+  column_to_rownames("Population")
   
-rownames(lcafs) == rownames(bioclim)
-
-# Part III: Imputed lcWGS data -------------------------------------------------
-
-# Data are LD-pruned.
-temp <- paste0("../data/pop_frq/imputed_lcwgs/", 
-        list.files(path = "../data/pop_frq/imputed_lcwgs"))
-implc <- as.data.frame(do.call(rbind, lapply(temp, rf))) %>% 
-  `rownames<-`(., gsub("\\_.*","", str_sub(temp, start = 31)))
-
-# write.csv(implc, "../data/pop_frq/imputed_lcwgs_afs.csv", row.names = T)
-implc <- read.csv("../data/pop_frq/imputed_lcwgs_afs.csv") %>% 
-  filter(rownames(.) %in% sites$site)
-
-rownames(implc) == rownames(db)
-
-(lcImpRDA <- vegan::rda(implc ~ bio2 + bio3 + bio8 + bio10 + bio13 + bio15 + Condition(dbMEM.1 + dbMEM.2 + dbMEM.8),
-                        data = cbind(bioclim, db), scale = T))
-
-
-# Part IV: Imputed and subset lcWGS --------------------------------------------
-
-temp <- paste0("../data/pop_frq/imputed_hdgbs_subset/", 
-               list.files(path = "../data/pop_frq/imputed_hdgbs_subset"))
-implcsub <- as.data.frame(do.call(rbind, lapply(temp, rf))) %>% 
-  `rownames<-`(., gsub("San", "SanJuan", gsub("\\_.*","", str_sub(temp, start = 38)))) %>% 
-  filter(rownames(.) %in% rownames(bioclim)) %>% arrange(rownames(.))
 
 
 
 
-sum(rownames(implcsub) == rownames(bioclim))
-
-(lcImpRDA <- vegan::rda(implcsub ~ bio4 + bio2 + bio5 + bio8 + bio16 + bio15 + Condition(dbMEM.1 + dbMEM.2 + dbMEM.8),
-                        data = cbind(bioclim, db), scale = T))
-vif.cca(lcImpRDA)
-RsquareAdj(lcImpRDA)
-lcImpRDA_output <- rda.full(model = lcImpRDA, dataset = "imputed_lcWGS")
-
-(lcimpsub_plots <- cowplot::plot_grid(plotlist = list(
-  lcImpRDA_output$rda_scale3, lcImpRDA_output$rda_scale1), 
-  ncol = 2, labels = c("a)", "b)")))
-ggsave("../plots/lcImpRDA_RDA13.tiff", width = 16, height = 8)
-
-################################################################################
-# Comparisons ------------------------------------------------------------------
-################################################################################
-
-# Outlier comparisons ----------------------------------------------------------
-
-a<-lcImpRDA_output$RDAdf %>% filter(!is.na(correlation)) %>% mutate(gpos = paste0(chromosome, position))
-b<-hdgbs_rda$RDAdf %>% filter(!is.na(correlation)) %>% mutate(gpos = paste0(chromosome, position))
-
-ggVennDiagram(x = list(a = a$gpos, b = b$gpos), category.names = c("lcImp", "hdgbs"))

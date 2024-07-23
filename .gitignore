@@ -51,3 +51,7 @@ data/deltaGP.csv
 **.pdf
 scripts
 data/lcwgs_samples.txt
+comp/freqs.txt
+map/hydroRIVERS_data/*
+map/hdgbs_freqs.txt
+data/pop_frq/*
