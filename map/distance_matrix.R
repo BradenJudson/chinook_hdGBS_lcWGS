@@ -82,9 +82,9 @@ coords <- sites[,c(2:3)]
 # -------------------------------------------------------------------------
 
 testdat <- data.frame(
-  Site = c("a", "b", "c", "d"),
-  lon = c(-130, -140, -140, -123.7),
-  lat  = c(41, 50, 70, 49.3))
+  Site = c("a", "b", "c", "d", "e"),
+  lon = c(-130, -140, -140, -123.7, -162.692),
+  lat  = c(41, 50, 70, 49.3, 61.9048))
 
 coords <- testdat[,c(2:3)]
 
@@ -109,7 +109,7 @@ for (j in 1:nrow(sitepoints@coords)) {
   # # Also compute and add inter-population distances.
   SPDF <- fortify(SpatialLinesDataFrame(SP, data = data.frame(ID = 1))) %>%
     mutate(pop1 = testdat[j, "Site"], pop2 = testdat[k, "Site"],
-           distance_m = geosphere::lengthLine(SP))
+           distance_m = round(geosphere::lengthLine(SP), 0))
 
   # Subset dataframe above and poplate list.
   spLine_list[[length(spLine_list)+1]] <- SPDF
@@ -122,19 +122,28 @@ site_lines <- do.call("rbind", spLine_list) %>%
   mutate(pair = as.factor(paste0(pop1, "-", pop2)))
 
 # Plot map and shortest paths between populations. 
-(dist_plot <- ggplot(NULL) +
+(dist_plot <- ggplot(NULL) + coord_sf() +
   geom_raster(data = dfsp, aes(x = x, y = y, fill = layer)) +
   geom_path(data = site_lines, aes(x = long, y = lat, colour = pair)) +
-  geom_point(data = testdat, aes(x = lon, y = lat)) + 
+  geom_label(data = testdat, aes(x = lon, y = lat, label = Site), 
+             label.r = unit(1/2, units = "lines")) +
+  # geom_point(data = testdat, aes(x = lon, y = lat)) + 
   scale_fill_manual(values = c("gray", "gray99")) +
   scale_x_continuous(expand = c(0,0)) +
   scale_y_continuous(expand = c(0,0),
-                     limits = c(39, 72)) + 
+                     limits = c(39, 72)) +
   theme_void() + theme(legend.position = "none"))
+ggsave("../plots/pop_distances.tiff", width = 7, height = 8, dpi = 300)
 
 # Isolate unique combinations of populations to summarize distances.
-df <- site_lines %>% group_by(pair) %>%
-  sample_n(1) 
-hist(df$distance_m, main = NULL, xlab = "Distance (m)")
+dists <- site_lines %>% group_by(pair) %>%
+  sample_n(1) %>% .[,7:10] # select columns 7-10.
+hist(dists$distance_m, main = NULL, xlab = "Distance (m)")
 
-
+# Convert distances into a pairwise matrix.
+dist_mat <- dists %>% 
+  pivot_wider(id_cols = pop2, 
+              names_from = pop1, 
+              values_from = distance_m) %>% 
+  column_to_rownames("pop2")
+write.csv(dist_mat, "../data/pop_water_distances.csv", row.names = T)

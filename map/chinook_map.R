@@ -38,36 +38,17 @@ sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>%
 
 sites[sites$Population == "SAN_JUAN_RIVER", "site"] <- "San Juan"
 
-# Read in global river database and subset for relevant systems.
-rivers <- ne_load(scale = 10, type = "rivers_lake_centerlines", destdir = "maps", returnclass = "sf") %>% 
-  filter(name %ni% c("Kuskokwim", "North Fork Kuskokwim", "S. Fork Kuskokwim", "Copper", "Kobuk", "Thelon",
-                     "Susitna", "Iliamna Lake Outlet", "Coppermine", "Humboldt", "Pit", "Sacramento",
-                     "Arctic Red", "Peel", "Bow", "Oldman", "Athabasca", "North Saskatchewan", "Brazeau"))
+# To make computations faster, only use data from focal area.
+bound <- c(ymin = 35, ymax = 70, xmin = -170, xmax = -105)
 
-# Again, use bcmaps to download watercourse dat and subset.
-(riv <- bcmaps::watercourses_5M())
-(sRiv <- riv %>% filter(name_en %in% c("Peace River", "Teslin River", "Cowichan River",
-                                       "Fraser River", "Lillooet River", "Adams River",
-                                       "San Juan River", "Cariboo River", "Iskut River",
-                                       "Taku River", "Bella Coola River", "Klinaklini River",
-                                       "Taseko River", "Dean River", "Kitimat River",
-                                       "Kitlope River", "Tatshenshini River", "Shuswap River",
-                                       "Nass River", "Similkameen River", "Skeena River",
-                                       "North Thompson River", "Thompson River", "Chilko River",
-                                       "Inklin River", "Quesnel River", "Chilcotin River",
-                                       "Harrison River", "Portland Canal", "Nechako River",
-                                       "Stuart River", "South Thompson River")))
+# Data from: https://www.hydrosheds.org/products/hydrorivers
+# North American and "Arctic" data are separate. 
+arctic  <- st_crop(st_read("./hydroRIVERS_data/arctic_v10/HydroRIVERS_v10_ar.shp"),        y = bound)
+northam <- st_crop(st_read("./hydroRIVERS_data/north_america_v10/HydroRIVERS_v10_na.shp"), y = bound)
+rivers <- rbind(arctic, northam) # Combine data sources here.
+rm(arctic); rm(northam); gc()    # Only retain combined object. Clears up memory.
 
-# Above command misses the Canadian Okanagan, so I manually read that in.
-# Also the American side of it too (the Okanogan R). 
-okanagan <- st_read("ok_path.kml")      
-
-# Read in lake data downloaded from iMap BC.
-# Filter some lakes. Object ID part is awkward as some lakes aren't named.
-lakes <- st_transform(st_read(dsn = "DBM_BC_7H_MIL_DRAINAGE_POLY"), crs = 4326) %>% 
-  filter(NAME %in% c("Harrison Lake", "Okanagan Lake", "Lower Arrow Lake", "Fran?ois Lake",
-  "Upper Arrow Lake", "Kinbasket Lake", "Adams Lake", "Shuswap Lake", "Fraser Lake") | 
-   OBJECTID %in% c("259", "280", "263", "260", "275", "258", "267", "225"))
+rivers3 <- st_transform(sf::st_simplify(rivers[rivers$ORD_STRA >  2,]), crs = 4326)
 
 # For labeling later - sets text values along y axis at predefined heights.
 (yv <- 55 - (55 - 40.25)*(1:(nrow(sites)/2))/nrow(sites)*2)
@@ -81,12 +62,8 @@ lakes <- st_transform(st_read(dsn = "DBM_BC_7H_MIL_DRAINAGE_POLY"), crs = 4326) 
                                       pad_x = unit(3.65, "cm"),
                                       style = ggspatial::north_arrow_fancy_orienteering()) +
     ggspatial::annotation_scale(location = "bl", pad_x = unit(3.75, "cm"),
-                                pad_y = unit(1/10, "cm"),
-                                width_hint = 1/10) + 
-    geom_sf(data = okanagan, color  = "skyblue", linewidth = 1/4) +
-    geom_sf(data = sRiv,     colour = "skyblue", linewidth = 1/4) +
-    geom_sf(data = rivers,   colour = "skyblue", linewidth = 1/4) +  
-    geom_sf(data = lakes,    colour = "skyblue", fill = "skyblue") +
+                                pad_y = unit(1/10, "cm"), width_hint = 1/10) +
+    geom_sf(data = rivers3,   colour = "skyblue",  linewidth = 1/4) +  
     geom_point(data = sites, size = 2.5, stroke = 1/3,
                shape = 21, color = "black", fill = "white",
                aes(x = Longitude, y = Latitude)) +
