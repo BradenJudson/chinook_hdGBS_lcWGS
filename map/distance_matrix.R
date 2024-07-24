@@ -1,6 +1,7 @@
 setwd("~/ots_landscape_genetics/map")
 
 library(sf); library(ggplot2); library(tidyverse); library(rmapshaper)
+library(raster); library(gdistance)
 
 
 # Resources ---------------------------------------------------------------
@@ -25,7 +26,7 @@ library(sf); library(ggplot2); library(tidyverse); library(rmapshaper)
 # -------------------------------------------------------------------------
 
 # To make computations faster, only use data from focal area.
-bound <- c(ymin = 40, ymax = 70, xmin = -170, xmax = -115)
+bound <- c(ymin = 35, ymax = 70, xmin = -170, xmax = -115)
 
 # Data from: https://www.hydrosheds.org/products/hydrorivers
 # North American and "Arctic" data are separate. 
@@ -58,17 +59,82 @@ ggplot(NULL) + geom_sf(data = land, fill = "white", colour = NA) +
 ggsave("../plots/land_only.png", width  = 1000, height = 1000, units = "px")
 
 
-rr <- raster(extent(land), nrow = 50, ncol = 50)
-j <- rasterize(land, rr)
+# Make a raster of the area of interest. 
+# Cols and rows are the number of cells (i.e., the resolution).
+rr <- raster(extent(land), nrow = 1e4, ncol = 1e4)
+rast <- rasterize(land, rr)  # Convert land polygon into above raster.
+invrast <- is.na(rast); plot(invrast) # Essentially invert the raster (land is NA, water is >0). 
 
-j[is.na(j)] <- 0
+png("../plots/raster1000.png", width = 1000, height = 1000); plot(invrast); dev.off()
+writeRaster(invrast, "../data/invraster_1000.grd")
+r1000 <- raster("../data/invraster_1000.grd")
 
-tr1 <- geoCorrection(transition(j, transitionFunction = mean, directions = 16), type = "c")
+# Prepare sparse transition matrix for all adjacent and next-to-adjacent cells (direction = 16).
+tr1 <- geoCorrection(transition(r1000, transitionFunction = mean, directions = 16), type = "c")
+
+sites <- read.delim("../data/ch2023_sequenced.txt") %>%
+  filter(Site %in% c("Cowichan", "Harrison")) %>%
+  .[,c("Site", "Longitude", "Latitude")]
+coords <- sites[,c(2:3)]
 
 
 
+# -------------------------------------------------------------------------
 
+testdat <- data.frame(
+  Site = c("a", "b", "c", "d"),
+  lon = c(-130, -140, -140, -123.7),
+  lat  = c(41, 50, 70, 49.3))
 
+coords <- testdat[,c(2:3)]
 
+# Convert sites to an object of class SpatialPointsDataFrame.
+sitepoints <- SpatialPoints(coords = coords,
+                            proj4string = CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
+
+# Empty list to populate.
+spLine_list <- list()
+
+# Nested for-loop that isolates unique and uni-directional combinations of populations.
+for (j in 1:nrow(sitepoints@coords)) {
+  
+  for (k in j:nrow(sitepoints@coords)) {
+    
+  if(k == j) { next } # Skip self-comparisons (i.e., distance = 0).
+  
+  # Shortest path between sites.
+  SP <- shortestPath(tr1, sitepoints[j], sitepoints[k], output = "SpatialLines")
+  
+  # Fortify lines object for plotting purposes. 
+  # # Also compute and add inter-population distances.
+  SPDF <- fortify(SpatialLinesDataFrame(SP, data = data.frame(ID = 1))) %>%
+    mutate(pop1 = testdat[j, "Site"], pop2 = testdat[k, "Site"],
+           distance_m = geosphere::lengthLine(SP))
+
+  # Subset dataframe above and poplate list.
+  spLine_list[[length(spLine_list)+1]] <- SPDF
+  
+  }
+}
+
+# Reformat list of spatial lines into a dataframe. 
+site_lines <- do.call("rbind", spLine_list) %>% 
+  mutate(pair = as.factor(paste0(pop1, "-", pop2)))
+
+# Plot map and shortest paths between populations. 
+(dist_plot <- ggplot(NULL) +
+  geom_raster(data = dfsp, aes(x = x, y = y, fill = layer)) +
+  geom_path(data = site_lines, aes(x = long, y = lat, colour = pair)) +
+  geom_point(data = testdat, aes(x = lon, y = lat)) + 
+  scale_fill_manual(values = c("gray", "gray99")) +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0),
+                     limits = c(39, 72)) + 
+  theme_void() + theme(legend.position = "none"))
+
+# Isolate unique combinations of populations to summarize distances.
+df <- site_lines %>% group_by(pair) %>%
+  sample_n(1) 
+hist(df$distance_m, main = NULL, xlab = "Distance (m)")
 
 

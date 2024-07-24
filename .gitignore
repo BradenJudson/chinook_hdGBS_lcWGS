@@ -55,3 +55,5 @@ comp/freqs.txt
 map/hydroRIVERS_data/*
 map/hdgbs_freqs.txt
 data/pop_frq/*
+**.grd
+**.gri
