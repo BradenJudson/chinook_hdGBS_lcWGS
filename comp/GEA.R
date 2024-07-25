@@ -23,20 +23,19 @@ rf <- function(dir) paste0(dir, list.files(pattern = ".*.frq",
          col_names = c("CHROM", "POS", "N_ALLELES", 
                        "N_CHR", "MajAll", "MinAll")) %>% 
   filter(MajAll != "{ALLELE:FREQ}") %>% 
-  mutate(Pop  = gsub("\\_.*","", str_sub(FileName, start = 17)),
+  mutate(Pop  = gsub("\\_.*","", basename(FileName)),
          MajAF = as.numeric(sub(".*:", "", MajAll)),
          MajNuc  = as.factor(substr(MajAll, start = 0, stop = 1)),
          MinAF = as.numeric(sub(".*:", "", MinAll)),
          MinNuc = as.factor(substr(MinAll, start = 0, stop = 1)),
-         Gpos   = paste0(CHROM, "_", POS)) %>% 
-  select(c("Gpos", "MajAF")) %>% 
+         Gpos   = paste0(CHROM, "_", POS)) %>% as.data.frame() %>% 
+  dplyr::select(c("Gpos", "MajAF")) %>% 
   pivot_wider(values_from = MajAF, names_from = Gpos)
 
 temp  <- paste0("../data/pop_frq/1_hdGBS_pruned_maf005_105k/", 
                 list.files(path = "../data/pop_frq/1_hdGBS_pruned_maf005_105k"))
 freqs <- as.data.frame(do.call(rbind, lapply(temp, rf))) %>% 
   `rownames<-`(., gsub("\\_.*","", basename(temp)))
-
 
 # Site data --------------------------------------------------------------------
 
@@ -276,12 +275,12 @@ rownames(lcafs) == rownames(bioclim)
 # Part III: Imputed lcWGS data -------------------------------------------------
 
 # Data are LD-pruned.
-temp <- paste0("../data/pop_frq/imputed_lcwgs/", 
-        list.files(path = "../data/pop_frq/imputed_lcwgs"))
+temp <- paste0("../data/pop_frq/3_imputed_lcWGS_pruned_maf005/", 
+        list.files(path = "../data/pop_frq/3_imputed_lcWGS_pruned_maf005"))
 implc <- as.data.frame(do.call(rbind, lapply(temp, rf))) %>% 
-  `rownames<-`(., gsub("\\_.*","", str_sub(temp, start = 31)))
+  `rownames<-`(., gsub("\\_.*","", basename(temp)))
 
-# write.csv(implc, "../data/pop_frq/imputed_lcwgs_afs.csv", row.names = T)
+write.csv(implc, "../data/pop_frq/imputed_lcwgs_afs.csv", row.names = T)
 implc <- read.csv("../data/pop_frq/imputed_lcwgs_afs.csv") %>% 
   filter(rownames(.) %in% sites$site)
 
@@ -293,11 +292,10 @@ rownames(implc) == rownames(db)
 
 # Part IV: Imputed and subset lcWGS --------------------------------------------
 
-temp <- paste0("../data/pop_frq/imputed_hdgbs_subset/", 
-               list.files(path = "../data/pop_frq/imputed_hdgbs_subset"))
+temp <- paste0("../data/pop_frq/5_imputed_lcWGS_sharedhdGBS_105k/", 
+               list.files(path = "../data/pop_frq/5_imputed_lcWGS_sharedhdGBS_105k"))
 implcsub <- as.data.frame(do.call(rbind, lapply(temp, rf))) %>% 
-  `rownames<-`(., gsub("San", "SanJuan", gsub("\\_.*","", str_sub(temp, start = 38)))) %>% 
-  filter(rownames(.) %in% rownames(bioclim)) %>% arrange(rownames(.))
+  `rownames<-`(., gsub("\\_.*","", basename(temp)))
 
 
 

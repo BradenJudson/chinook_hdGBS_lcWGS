@@ -3,26 +3,6 @@ setwd("~/ots_landscape_genetics/map")
 library(sf); library(ggplot2); library(tidyverse); library(rmapshaper)
 library(raster); library(gdistance)
 
-
-# Resources ---------------------------------------------------------------
-
-# https://ggplot2.tidyverse.org/reference/ggsf.html#combining-sf-layers-and-regular-geoms
-# https://stackoverflow.com/questions/28595414/calculate-distance-between-2-lon-lats-but-avoid-going-through-a-coastline-in-r
-# https://gis.stackexchange.com/questions/353633/r-spatial-erase-one-polygon-from-another-correct-use-of-st-difference
-# https://osf.io/an6b5/download [use st_difference?]
-# https://gis.stackexchange.com/questions/109639/reverse-clipping-erasing-in-r
-# https://stackoverflow.com/questions/22947448/finding-euclidean-distance-in-rspatstat-between-points-confined-by-an-irregul
-# https://stackoverflow.com/questions/55893463/measuring-the-distance-of-all-points-along-a-line-in-r-linestring-in-sf
-
-# st_buffer returns polygon?
-
-# Make polygon of pacific ocean basically with this:
-# https://gis.stackexchange.com/questions/403977/sf-create-polygon-from-minimum-x-and-y-coordinates
-# Remove overlap of land, getting ocean and rivers
-# follow link above to compute distances
-# adjust lat/lon as needed
-# Consider river order 3 or 4? 
-
 # -------------------------------------------------------------------------
 
 # To make computations faster, only use data from focal area.
@@ -83,7 +63,7 @@ coords <- sites[,c(2:3)]
 
 testdat <- data.frame(
   Site = c("a", "b", "c", "d", "e"),
-  lon = c(-130, -140, -140, -123.7, -162.692),
+  lon  = c(-130, -140, -140, -123.7, -162.692),
   lat  = c(41, 50, 70, 49.3, 61.9048))
 
 coords <- testdat[,c(2:3)]
@@ -119,21 +99,8 @@ for (j in 1:nrow(sitepoints@coords)) {
 
 # Reformat list of spatial lines into a dataframe. 
 site_lines <- do.call("rbind", spLine_list) %>% 
-  mutate(pair = as.factor(paste0(pop1, "-", pop2)))
-
-# Plot map and shortest paths between populations. 
-(dist_plot <- ggplot(NULL) + coord_sf() +
-  geom_raster(data = dfsp, aes(x = x, y = y, fill = layer)) +
-  geom_path(data = site_lines, aes(x = long, y = lat, colour = pair)) +
-  geom_label(data = testdat, aes(x = lon, y = lat, label = Site), 
-             label.r = unit(1/2, units = "lines")) +
-  # geom_point(data = testdat, aes(x = lon, y = lat)) + 
-  scale_fill_manual(values = c("gray", "gray99")) +
-  scale_x_continuous(expand = c(0,0)) +
-  scale_y_continuous(expand = c(0,0),
-                     limits = c(39, 72)) +
-  theme_void() + theme(legend.position = "none"))
-ggsave("../plots/pop_distances.tiff", width = 7, height = 8, dpi = 300)
+  mutate(pair = as.factor(paste0(pop1, "-", pop2)),
+         label = as.factor(paste0(pair, ": ", format(distance_m, format = "d", big.mark = ","), " (m)")))
 
 # Isolate unique combinations of populations to summarize distances.
 dists <- site_lines %>% group_by(pair) %>%
@@ -147,3 +114,30 @@ dist_mat <- dists %>%
               values_from = distance_m) %>% 
   column_to_rownames("pop2")
 write.csv(dist_mat, "../data/pop_water_distances.csv", row.names = T)
+
+
+(pop_dists <- ggplot(data = site_lines, 
+                    aes(x = long, y = lat, colour = label, group = label)) +
+  geom_raster(data = dfsp, aes(x = x, y = y, fill = layer), inherit.aes = FALSE) +
+  geom_point(data = testdat, aes(x = lon, y = lat), inherit.aes = FALSE) +
+  scale_fill_manual(values = c("gray", "gray99")) +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0),
+                     limits = c(39, 72)) + coord_sf() +
+  geom_path(linewidth = 1.5) +
+  geom_path(data = site_lines[,c(1:10)], aes(x = long, y = lat, colour = pair),
+            linewidth = 1, alpha = 1/8, inherit.aes = FALSE) +
+    theme_void() + theme(legend.position = "none"))
+ggsave("../plots/pop_distances.tiff", width = 7, height = 8, dpi = 300)
+
+dists_an <- pop_dists +
+  transition_states(label) + 
+  ease_aes('linear') +
+  labs(tag = "{closest_state}") +
+  theme(plot.tag.position = c(0.2, 0.2),
+        plot.tag = element_text(size = 20))
+
+(gif <- animate(dists_an, width = 1000, height = 1000, renderer=gifski_renderer(loop=TRUE), 
+               nframes = 5*length(unique((site_lines$pair)))))
+anim_save("../plots/distance_matrix.gif", gif)
+file.remove(list.files(pattern=".png"))
