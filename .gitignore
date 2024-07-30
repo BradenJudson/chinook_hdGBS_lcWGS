@@ -55,5 +55,7 @@ comp/freqs.txt
 map/hydroRIVERS_data/*
 map/hdgbs_freqs.txt
 data/pop_frq/*
+data/chinook_maf005_8MSNPs.txt
 **.grd
 **.gri
+data/lcwgs_hdgbs_shared_non_pruned.txt

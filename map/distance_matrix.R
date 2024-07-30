@@ -1,9 +1,19 @@
 setwd("~/ots_landscape_genetics/map")
 
 library(sf); library(ggplot2); library(tidyverse); library(rmapshaper)
-library(raster); library(gdistance)
+library(raster); library(gdistance); library(fasterize)
 
-# -------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
+
+# TO DO ------------------------------------------------------------------------
+
+# Highlight points connected by each line as they are presented.
+# as per base map, white circle with a number/label?
+
+# ------------------------------------------------------------------------------
+
+
 
 # To make computations faster, only use data from focal area.
 bound <- c(ymin = 35, ymax = 70, xmin = -170, xmax = -115)
@@ -19,7 +29,7 @@ rm(arctic); rm(northam); gc()    # Only retain combined object. Clears up memory
 # Transform each linear feature into a polygon by expanding it with a constant buffer. 
 # Benefits from some geometric simplification (faster & alternative is unnecessarily complex).
 # Other transformations are necessary for st_difference later on.
-buff <- sf::st_buffer(sf::st_simplify(rivers[rivers$ORD_STRA > 3,]), dist = 1500)
+buff <- sf::st_buffer(sf::st_simplify(rivers[rivers$ORD_STRA > 3,]), dist = 5000)
 water_poly  <- st_make_valid(st_union(buff)) # Collapse overlapping geometries.
 water_multi <- st_crop(st_union(st_make_valid(st_cast(water_poly,   # Reformat.
                        to = "MULTIPOLYGON"))), y = bound)           # Crop.
@@ -41,16 +51,16 @@ ggsave("../plots/land_only.png", width  = 1000, height = 1000, units = "px")
 
 # Make a raster of the area of interest. 
 # Cols and rows are the number of cells (i.e., the resolution).
-rr <- raster(extent(land), nrow = 1e4, ncol = 1e4)
-rast <- rasterize(land, rr)  # Convert land polygon into above raster.
-invrast <- is.na(rast); plot(invrast) # Essentially invert the raster (land is NA, water is >0). 
+rr <- raster(extent(land), nrow = 1e5, ncol = 1e5) # Takes multiple days to run.
+rast <- fasterize(land, rr)  # Convert land polygon into above raster.
+invrast <- is.na(rast); plot(invrast) # Invert the raster (land is NA, water != NA). 
 
-png("../plots/raster1000.png", width = 1000, height = 1000); plot(invrast); dev.off()
-writeRaster(invrast, "../data/invraster_1000.grd")
-r1000 <- raster("../data/invraster_1000.grd")
+png("../plots/raster10000.png", width = 1000, height = 1000); plot(invrast); dev.off()
+writeRaster(invrast, "../data/invraster_10000.grd")
+r10000 <- raster("../data/invraster_10000.grd")
 
 # Prepare sparse transition matrix for all adjacent and next-to-adjacent cells (direction = 16).
-tr1 <- geoCorrection(transition(r1000, transitionFunction = mean, directions = 16), type = "c")
+tr1 <- geoCorrection(transition(r10000, transitionFunction = mean, directions = 16), type = "c")
 
 sites <- read.delim("../data/ch2023_sequenced.txt") %>%
   filter(Site %in% c("Cowichan", "Harrison")) %>%
@@ -62,7 +72,7 @@ coords <- sites[,c(2:3)]
 # -------------------------------------------------------------------------
 
 testdat <- data.frame(
-  Site = c("a", "b", "c", "d", "e"),
+  Site = c("abernathy", "birkenhead", "Yakoun", "Trinity", "Okanagan"),
   lon  = c(-130, -140, -140, -123.7, -162.692),
   lat  = c(41, 50, 70, 49.3, 61.9048))
 
@@ -81,6 +91,10 @@ for (j in 1:nrow(sitepoints@coords)) {
   for (k in j:nrow(sitepoints@coords)) {
     
   if(k == j) { next } # Skip self-comparisons (i.e., distance = 0).
+    
+    # Display loop progres over pairs of populations.
+    pops <- testdat$Site
+    print(paste0("Calculating distance from ", pops[j], " to ", pops[k]))
   
   # Shortest path between sites.
   SP <- shortestPath(tr1, sitepoints[j], sitepoints[k], output = "SpatialLines")
@@ -98,8 +112,9 @@ for (j in 1:nrow(sitepoints@coords)) {
 }
 
 # Reformat list of spatial lines into a dataframe. 
+# Make a 'label' for plotting purposes.
 site_lines <- do.call("rbind", spLine_list) %>% 
-  mutate(pair = as.factor(paste0(pop1, "-", pop2)),
+  mutate(pair = as.factor(paste(pop1, "-", pop2)),
          label = as.factor(paste0(pair, ": ", format(distance_m, format = "d", big.mark = ","), " (m)")))
 
 # Isolate unique combinations of populations to summarize distances.
@@ -115,11 +130,12 @@ dist_mat <- dists %>%
   column_to_rownames("pop2")
 write.csv(dist_mat, "../data/pop_water_distances.csv", row.names = T)
 
-
+# Plot distance paths between all populations. 
+# Some formatting required to pass ggplot object to gganimate and have it
+# function as expected (i.e., only certain layers are animated).
 (pop_dists <- ggplot(data = site_lines, 
                     aes(x = long, y = lat, colour = label, group = label)) +
   geom_raster(data = dfsp, aes(x = x, y = y, fill = layer), inherit.aes = FALSE) +
-  geom_point(data = testdat, aes(x = lon, y = lat), inherit.aes = FALSE) +
   scale_fill_manual(values = c("gray", "gray99")) +
   scale_x_continuous(expand = c(0,0)) +
   scale_y_continuous(expand = c(0,0),
@@ -127,17 +143,24 @@ write.csv(dist_mat, "../data/pop_water_distances.csv", row.names = T)
   geom_path(linewidth = 1.5) +
   geom_path(data = site_lines[,c(1:10)], aes(x = long, y = lat, colour = pair),
             linewidth = 1, alpha = 1/8, inherit.aes = FALSE) +
+    scale_colour_manual(values = rep(c(viridis_pal(option = "D")(length(unique(site_lines$label)))),2)) +
+    geom_point(data = testdat, aes(x = lon, y = lat), inherit.aes = FALSE) +
     theme_void() + theme(legend.position = "none"))
 ggsave("../plots/pop_distances.tiff", width = 7, height = 8, dpi = 300)
 
+# Define animations for ggplot object above.
+# Print label in bottom left corner.
 dists_an <- pop_dists +
   transition_states(label) + 
   ease_aes('linear') +
   labs(tag = "{closest_state}") +
-  theme(plot.tag.position = c(0.2, 0.2),
-        plot.tag = element_text(size = 20))
+  theme(plot.tag.position = c(0.15, 0.1),
+        plot.tag = element_text(size = 20, hjust = 0))
 
+# Animate based on criteria described above. 10 frames per transition and loop infinitely. 
 (gif <- animate(dists_an, width = 1000, height = 1000, renderer=gifski_renderer(loop=TRUE), 
-               nframes = 5*length(unique((site_lines$pair)))))
-anim_save("../plots/distance_matrix.gif", gif)
+               nframes = 10*length(unique((site_lines$pair)))))
+
+# Remove temporary png files and save output gif.
 file.remove(list.files(pattern=".png"))
+anim_save("../plots/distance_matrix.gif", gif)
