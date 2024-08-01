@@ -342,12 +342,12 @@ rownames(implc) == rownames(db)
 
 # Part IV: Imputed and subset lcWGS --------------------------------------------
 
-temp <- paste0("../data/pop_frq/6b_imputed_lcWGS_subset_134k/",
-               list.files(path = "../data/pop_frq/6b_imputed_lcWGS_subset_134k"))
+temp <- paste0("../data/pop_frq/6a_imputed_lcWGS_pruned_subset_105k/",
+               list.files(path = "../data/pop_frq/6a_imputed_lcWGS_pruned_subset_105k"))
 implcsub <- as.data.frame(do.call(rbind, lapply(temp, rf))) %>% 
   `rownames<-`(., gsub("\\_.*","", basename(temp)))
 
-write_tsv(implcsub, "../data/pop_frq/6b_imputed_lcWGS_subset_134k")
+write_tsv(implcsub, "../data/pop_frq/6a_imputed_lcWGS_pruned_subset_105k.tsv")
 
 
 sum(rownames(implcsub) == rownames(bioclim))
