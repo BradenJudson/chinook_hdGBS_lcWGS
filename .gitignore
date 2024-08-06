@@ -59,3 +59,9 @@ data/chinook_maf005_8MSNPs.txt
 **.grd
 **.gri
 data/lcwgs_hdgbs_shared_non_pruned.txt
+**.rds
+data/distances_long.csv
+data/Otsh_bioclim.csv
+map/dist_mat.txt
+map/distances_long.csv
+comp/pops.txt

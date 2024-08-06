@@ -6,12 +6,6 @@ library(gganimate)
 
 # ------------------------------------------------------------------------------
 
-
-# TO DO ------------------------------------------------------------------------
-
-# Highlight points connected by each line as they are presented.
-# as per base map, white circle with a number/label?
-
 # ------------------------------------------------------------------------------
 
 # To make computations faster, only use data from focal area.
@@ -85,7 +79,7 @@ ggsave("../plots/simplified_waterways.png")
 
 # Make a raster of the area of interest. 
 # Cols and rows are the number of cells (i.e., the resolution).
-rr <- raster(extent(st_crop(USALAND, y = bound)), nrow = y.pixels, ncol = x.pixels)                
+rr <- raster(extent(st_crop(USALAND, y = bound)), nrow = 5e3, ncol = 5e3*(y.pixels/x.pixels))                
 rast <- fasterize(water_s, rr)  # Convert land polygon into above raster.
 
 png("../plots/raster10000.png", width = 1000, height = 1000); plot(rast, col = '#0868ac', 
@@ -97,7 +91,8 @@ sf_use_s2(TRUE) # Reinstate spherical (s2) geometry defaults.
 # Prepare sparse transition matrix for all adjacent and next-to-adjacent cells (direction = 8).
 # Direction 8 is only by connecting points, so it cannot skip over NA regions (i.e., jump between rivers). 
 tr1 <- geoCorrection(transition(r10000, transitionFunction = mean, directions = 8), type = "c")
-saveRDS(tr1, "waterway_transition_matrix_5k.rds")
+# saveRDS(tr1, "waterway_transition_matrix_5k.rds")
+tr1 <- readRDS("waterway_transition_matrix_5k.rds")
 
 sites <- read.delim("../data/ch2023_sequenced.txt") %>%
   .[,c("Site", "Longitude", "Latitude")]
@@ -113,13 +108,6 @@ sites[sites$Site == "Kilbella", c(2:3)] <- c(-127.8425, 51.62361)
 sites[sites$Site == "Kincolith", c(2:3)] <- c(-130.0425, 54.99598)
 sites[sites$Site == "Ecstall", c(2:3)] <- c(-129.9325, 54.18955)
 sites[sites$Site == "Imnaha", c(2:3)] <- c(-116.4575, 45.53867)
-
-q <- as.data.frame(rast$layer, xy = T)
-(j <- ggplot(NULL) +
-  geom_raster(data = q, aes(x =x, y = y, fill = layer)) +
-    geom_point(data = sites, aes(x = Longitude, y = Latitude)))
-ggplotly(j)
-
 
 # Convert sites to an object of class SpatialPointsDataFrame.
 sitepoints <- SpatialPoints(coords = sites[,c("Longitude", "Latitude")],
@@ -159,25 +147,30 @@ for (j in 1:nrow(sitepoints@coords)) {
 site_lines <- do.call("rbind", spLine_list) %>% 
   mutate(pair = as.factor(paste(pop1, "-", pop2)),
          label = as.factor(paste0(pair, ": ", format(distance_m, format = "d", big.mark = ","), " (m)")))
+# write_rds(site_lines, "distance_lines.rds")
+
 
 # Isolate unique combinations of populations to summarize distances.
 dists <- site_lines %>% group_by(pair) %>%
   sample_n(1) %>% .[,7:10] # select columns 7-10.
 hist(dists$distance_m, main = NULL, xlab = "Distance (m)")
 
-# Convert distances into a pairwise matrix.
-################### USE XTABS HERE #########
-dist_mat <- dists %>% 
-  pivot_wider(id_cols = pop2, 
-              names_from = pop1, 
-              values_from = distance_m) %>% 
-  column_to_rownames("pop2")
-write.csv(dist_mat, "../data/pop_water_distances.csv", row.names = T)
+# Transform inter-population distances into a pairwise matrix.
+# Add column and row that are all zeroes so it can be flipped across the diagonal.
+distmat <- as.data.frame.matrix(xtabs(distance_m ~ pop1 + pop2, dists[,c(1:3)]))
+distmat <- cbind(Abernathy = 0, distmat); distmat <- rbind(distmat, Yeth = 0)
+distmat[4,5:39] <- distmat[5:39,4]; distmat[5:39,4] <- 0 # Fix BigQ for some reason.
+distmat[lower.tri(distmat)] <- t(distmat[upper.tri(distmat)])
+sum(distmat == 0) == nrow(distmat)
+write.csv(distmat, "../data/Otsh_distances_mat.csv")
+
 
 # Plot distance paths between all populations. 
 # Some formatting required to pass ggplot object to gganimate and have it
 # function as expected (i.e., only certain layers are animated).
-(pop_dists <- ggplot(data = site_lines, 
+Takhanne <- site_lines[site_lines$pop1 == "Takhanne" | site_lines$pop2 == "Takhanne",] %>% 
+  arrange(distance_m)
+(pop_dists <- ggplot(data = Takhanne, 
                     aes(x = long, y = lat, colour = label, group = label)) +
     geom_sf(data = CANLAND, fill = "gray", colour = NA, inherit.aes = FALSE) +
     geom_sf(data = USALAND, fill = "gray", colour = NA, inherit.aes = FALSE) +
@@ -187,8 +180,8 @@ write.csv(dist_mat, "../data/pop_water_distances.csv", row.names = T)
   scale_y_continuous(expand = c(0,0),
                      limits = c(39, 72)) + coord_sf() +
   geom_path(linewidth = 1.5) +
-  geom_path(data = site_lines[,c(1:10)], aes(x = long, y = lat, colour = pair),
-            linewidth = 1, alpha = 1/8, inherit.aes = FALSE) +
+  # geom_path(data = site_lines[,c(1:10)], aes(x = long, y = lat, colour = pair),
+  #           linewidth = 1, alpha = 1/40, inherit.aes = FALSE) +
     scale_colour_manual(values = rep(c(viridis_pal(option = "D")(length(unique(site_lines$label)))),2)) +
     geom_point(data = sites, aes(x = Longitude, y = Latitude), inherit.aes = FALSE) +
     theme_void() + theme(legend.position = "none"))
@@ -204,9 +197,9 @@ dists_an <- pop_dists +
         plot.tag = element_text(size = 20, hjust = 0))
 
 # Animate based on criteria described above. 10 frames per transition and loop infinitely. 
-(gif <- animate(dists_an, width = 1000, height = 1000, renderer=gifski_renderer(loop=TRUE), 
-               nframes = 1*length(unique((site_lines$pair)))))
+(gif <- animate(dists_an, width = 1000, height = 1000, renderer = gifski_renderer(loop = TRUE), 
+               nframes = 10*length(unique((Takhanne$pair)))))
 
 # Remove temporary png files and save output gif.
 file.remove(list.files(pattern=".png"))
-anim_save("../plots/distance_matrix.gif", gif)
+anim_save("../plots/distance_matrix2.gif", gif)

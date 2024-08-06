@@ -32,32 +32,64 @@ rf <- function(dir) paste0(dir, list.files(pattern = ".*.frq",
   dplyr::select(c("Gpos", "MajAF")) %>% 
   pivot_wider(values_from = MajAF, names_from = Gpos)
 
-temp  <- paste0("../data/pop_frq/2b_hdGBS_maf005_subset_134k/", 
-                list.files(path = "../data/pop_frq/2b_hdGBS_maf005_subset_134k"))
+temp  <- paste0("../data/pop_frq/6b_imputed_lcWGS_subset_134k/", 
+                list.files(path = "../data/pop_frq/6b_imputed_lcWGS_subset_134k/"))
 freqs <- as.data.frame(do.call(rbind, lapply(temp, rf))) %>% 
   `rownames<-`(., gsub("\\_.*","", basename(temp)))
 
+
+rmpops <- c("Big", "Harrison", "Raft", "Harrison")
+
+freqs <- freqs %>% filter(!rownames(.) %in% rmpops)
+  
 # Site data --------------------------------------------------------------------
 
 # Read in site information and format accordingly.
 sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>%
   mutate(Site = gsub("[[:space:]]", "", Site)) %>%
   relocate(Site, .after = last_col()) %>% 
-  .[, c((ncol(.)-3):ncol(.))] %>% filter(Site %in% rownames(freqs)) %>% arrange(Site)
+  .[, c((ncol(.)-3):ncol(.))] %>% 
+  filter(Site %in% rownames(freqs)) %>%
+  arrange(Site)
 
 sum(sites$Site == rownames(freqs)) == nrow(sites)
 
 # Compute a linear distance (m) matrix accounting for the curvature of the earth.
-dm <- st_distance(st_as_sf(sites[,c(4,3,2)], coords = 2:3, crs = 4326))
+# dm <- st_distance(st_as_sf(sites[,c(4,3,2)], coords = 2:3, crs = 4326))
 
+
+rivdist <- read.csv("../data/Otsh_distances_mat.csv", row.names = 1) %>% 
+  `colnames<-`(., gsub("\\.", "", colnames(.))) %>% 
+  `rownames<-`(., gsub(" ", "", rownames(.))) 
+
+rivdist <- data.matrix(rivdist)
+rivdist <- rivdist[rownames(rivdist) %in% rownames(freqs),
+                   colnames(rivdist) %in% rownames(freqs)]
+
+# YR <- c("Andreafsky", "Tozitna", "BigSalmon", "Mayo", "Nordenskiold",
+#         "Tincup", "Klondike", "Morley", "Hoole", "Takhini", "SalmonFork")
+# rivdist <- rivdist[rownames(rivdist) %in% c(YR),
+#                    colnames(rivdist) %in% c(YR)]
 # Convert distance matrix into distance-based Moran's eigenvector maps.
-db <- create.dbMEM.model(coord = sites[,c(2:3)], nsites = nrow(sites)) %>% 
+# db <- create.dbMEM.model(D.mat = rivdist, nsites = nrow(rivdist))
+# db <- create.dbMEM.model.hack(D.mat = rivdist, nsites = nrow(rivdist))
+
+pc <- pcnm(dis = rivdist)
+pcnms <- as.data.frame(pc$vectors)
+ 
   as.data.frame() %>% `rownames<-`(., c(sites$site)) # Formatting.
 
-nmod  <- rda(freqs ~ 1, db) # Null model.
-fmod  <- rda(freqs ~ ., db) # Full model.
-optdb <- ordiR2step(nmod, scope = formula(fmod), direction = 'both')
+nmod  <- rda(freqs ~ 1, pcnms) # Null model.
+fmod  <- rda(freqs ~ ., pcnms) # Full model.
+optdb <- ordiR2step(nmod, scope = formula(fmod), direction = 'forward')
 summary(optdb)$call # Prints formula with selected predictor variables.
+
+png("../plots/pcnm_scores.png", width = 800, height = 1200, res = 100)
+par(mfrow = c(3, 1))
+hist(pcnms$PCNM1, main = "PCNM1", xlab = "PCNM Score")
+hist(pcnms$PCNM3, main = "PCNM3", xlab = "PCNM Score")
+hist(pcnms$PCNM4, main = "PCNM4", xlab = "PCNM Score")
+dev.off()
 # Choose dbMEMs that optimally describe spatial variation in response data.
 
 # Bioclimatic data -------------------------------------------------------------
@@ -79,7 +111,7 @@ sum(rownames(bioclim) %in% sites$Site) == nrow(sites)
 png("../plots/predictor_cors.png", width = 1200, height = 1000, res = 100)
 bioclim_sub <- as.matrix(cbind(subset(bioclim, select = c( bio1, 
                                       bio5, bio8, bio16, bio15)),
-                               subset(db, select = c(dbMEM.1, dbMEM.2, dbMEM.8))))
+                               subset(pcnms[,c(1,3:4)])))
 gplots::heatmap.2(cor(bioclim_sub)^2, trace = 'none', margins = c(7,7)) ; dev.off()
 
 sum(rownames(freqs) == rownames(bioclim)) == nrow(bioclim) 
@@ -93,8 +125,8 @@ sum(rownames(freqs) == rownames(bioclim)) == nrow(bioclim)
 
 
 # Define and run RDA.
-(hdRDA <- vegan::rda(freqs ~ bio1 + bio5 + bio8 + bio16 + bio15 + Condition(dbMEM.1 + dbMEM.2 + dbMEM.8),
-                     data = cbind(bioclim, db), scale = T)) # Scale and center predictors.
+(hdRDA <- vegan::rda(freqs ~ bio1 + bio5 + bio8 + bio16 + bio15 + Condition(PCNM1 + PCNM3 + PCNM4),
+                     data = cbind(bioclim, pcnms), scale = T)) # Scale and center predictors.
 (hdRDA <- vegan::rda(freqs ~ bio4 + bio2 + bio5 + bio8 + bio16 + bio15 + Condition(dbMEM.1 + dbMEM.2 + dbMEM.8),
                      data = cbind(bioclim, db), scale = T)) # Scale and center predictors.
 RsquareAdj(hdRDA) # Adjusted and non-adjusted model R2 values = 0.158 and 0.067, respectively.
