@@ -148,6 +148,7 @@ site_lines <- do.call("rbind", spLine_list) %>%
   mutate(pair = as.factor(paste(pop1, "-", pop2)),
          label = as.factor(paste0(pair, ": ", format(distance_m, format = "d", big.mark = ","), " (m)")))
 # write_rds(site_lines, "distance_lines.rds")
+site_lines <- readRDS("distance_lines.rds")
 
 
 # Isolate unique combinations of populations to summarize distances.
@@ -157,19 +158,21 @@ hist(dists$distance_m, main = NULL, xlab = "Distance (m)")
 
 # Transform inter-population distances into a pairwise matrix.
 # Add column and row that are all zeroes so it can be flipped across the diagonal.
-distmat <- as.data.frame.matrix(xtabs(distance_m ~ pop1 + pop2, dists[,c(1:3)]))
+distmat <- as.data.frame.matrix(xtabs(distance_m ~ ., dists[,c(1:3)]))
 distmat <- cbind(Abernathy = 0, distmat); distmat <- rbind(distmat, Yeth = 0)
-distmat[4,5:39] <- distmat[5:39,4]; distmat[5:39,4] <- 0 # Fix BigQ for some reason.
-distmat[lower.tri(distmat)] <- t(distmat[upper.tri(distmat)])
-sum(distmat == 0) == nrow(distmat)
+distmat[4,5:39] <- distmat[5:39,4]; distmat[5:39,4] <- 0 # Fix Big Qualicum for some reason.
+distmat[lower.tri(distmat)] <- t(distmat[upper.tri(distmat)]) # Make it symmetrical across the diagonal.
+colnames(distmat) <- rownames(distmat) <- gsub(" ", "", rownames(distmat)) # Make naming consistent.
+sum(distmat == 0) == nrow(distmat) # Check that formatting is what we expect.
 write.csv(distmat, "../data/Otsh_distances_mat.csv")
 
 
 # Plot distance paths between all populations. 
 # Some formatting required to pass ggplot object to gganimate and have it
 # function as expected (i.e., only certain layers are animated).
+# Subset Takhanne as an example. Must reorder the factor after filtering.
 Takhanne <- site_lines[site_lines$pop1 == "Takhanne" | site_lines$pop2 == "Takhanne",] %>% 
-  arrange(distance_m)
+  arrange(distance_m) %>% mutate(label = as.factor(as.character(label)))
 (pop_dists <- ggplot(data = Takhanne, 
                     aes(x = long, y = lat, colour = label, group = label)) +
     geom_sf(data = CANLAND, fill = "gray", colour = NA, inherit.aes = FALSE) +
@@ -180,21 +183,19 @@ Takhanne <- site_lines[site_lines$pop1 == "Takhanne" | site_lines$pop2 == "Takha
   scale_y_continuous(expand = c(0,0),
                      limits = c(39, 72)) + coord_sf() +
   geom_path(linewidth = 1.5) +
-  # geom_path(data = site_lines[,c(1:10)], aes(x = long, y = lat, colour = pair),
-  #           linewidth = 1, alpha = 1/40, inherit.aes = FALSE) +
-    scale_colour_manual(values = rep(c(viridis_pal(option = "D")(length(unique(site_lines$label)))),2)) +
+    scale_colour_manual(values = c(viridis_pal(option = "D")(length(unique(Takhanne$label))))) +
     geom_point(data = sites, aes(x = Longitude, y = Latitude), inherit.aes = FALSE) +
     theme_void() + theme(legend.position = "none"))
 ggsave("../plots/pop_distances.tiff", width = 7, height = 8, dpi = 300)
 
 # Define animations for ggplot object above.
 # Print label in bottom left corner.
-dists_an <- pop_dists +
+(dists_an <- pop_dists +
   transition_states(label) + 
   ease_aes('linear') +
   labs(tag = "{closest_state}") +
   theme(plot.tag.position = c(0.15, 0.1),
-        plot.tag = element_text(size = 20, hjust = 0))
+        plot.tag = element_text(size = 20, hjust = 0)))
 
 # Animate based on criteria described above. 10 frames per transition and loop infinitely. 
 (gif <- animate(dists_an, width = 1000, height = 1000, renderer = gifski_renderer(loop = TRUE), 

@@ -35,7 +35,11 @@ rf <- function(dir) paste0(dir, list.files(pattern = ".*.frq",
 temp  <- paste0("../data/pop_frq/6b_imputed_lcWGS_subset_134k/", 
                 list.files(path = "../data/pop_frq/6b_imputed_lcWGS_subset_134k/"))
 freqs <- as.data.frame(do.call(rbind, lapply(temp, rf))) %>% 
-  `rownames<-`(., gsub("\\_.*","", basename(temp)))
+  mutate(Population = gsub("\\_.*","", basename(temp))) %>% 
+  relocate(Population, 1)
+
+write.table(freqs, "../data/pop_frq/6b_imputed_lcWGS_subset_134k.txt", 
+            quote = F, row.names = F, col.names = T)
 
 
 rmpops <- c("Big", "Harrison", "Raft", "Harrison")
