@@ -94,20 +94,8 @@ tr1 <- geoCorrection(transition(r10000, transitionFunction = mean, directions = 
 # saveRDS(tr1, "waterway_transition_matrix_5k.rds")
 tr1 <- readRDS("waterway_transition_matrix_5k.rds")
 
-sites <- read.delim("../data/ch2023_sequenced.txt") %>%
-  .[,c("Site", "Longitude", "Latitude")]
-sites[sites$Site == "Tozitna", c(2:3)] <- c(-152.5375, 65.25973)
-sites[sites$Site == "Trinity", c(2:3)] <- c(-123.4975, 41.46983)
-sites[sites$Site == "Serpentine", c(2:3)] <- c(-122.9475, 49.13098)
-sites[sites$Site == "Moyeha", c(2:3)] <- c(-126.0275, 49.31427)
-sites[sites$Site == "Kaouk", c(2:3)] <- c(-127.2375, 49.97408)
-sites[sites$Site == "Duteau", c(2:3)] <- c(-118.8225, 50.26733)
-sites[sites$Site == "Portage", c(2:3)] <- c(-122.2875, 50.74386)
-sites[sites$Site == "Phillips", c(2:3)] <- c(-125.3675, 50.45061)
-sites[sites$Site == "Kilbella", c(2:3)] <- c(-127.8425, 51.62361)
-sites[sites$Site == "Kincolith", c(2:3)] <- c(-130.0425, 54.99598)
-sites[sites$Site == "Ecstall", c(2:3)] <- c(-129.9325, 54.18955)
-sites[sites$Site == "Imnaha", c(2:3)] <- c(-116.4575, 45.53867)
+# Read in site information.
+sites <- read.delim("../data/ch2023_sequenced_adj.txt", sep = "\t")
 
 # Convert sites to an object of class SpatialPointsDataFrame.
 sitepoints <- SpatialPoints(coords = sites[,c("Longitude", "Latitude")],
@@ -148,7 +136,7 @@ site_lines <- do.call("rbind", spLine_list) %>%
   mutate(pair = as.factor(paste(pop1, "-", pop2)),
          label = as.factor(paste0(pair, ": ", format(distance_m, format = "d", big.mark = ","), " (m)")))
 # write_rds(site_lines, "distance_lines.rds")
-site_lines <- readRDS("distance_lines.rds")
+# site_lines <- readRDS("distance_lines.rds")
 
 
 # Isolate unique combinations of populations to summarize distances.
@@ -203,4 +191,4 @@ ggsave("../plots/pop_distances.tiff", width = 7, height = 8, dpi = 300)
 
 # Remove temporary png files and save output gif.
 file.remove(list.files(pattern=".png"))
-anim_save("../plots/distance_matrix2.gif", gif)
+anim_save("../plots/takhanne_distances.gif", gif)
