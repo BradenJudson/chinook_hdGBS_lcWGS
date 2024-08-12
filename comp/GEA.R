@@ -67,21 +67,17 @@ rivdist <- read.csv("../data/Otsh_distances_mat.csv", row.names = 1) %>%
   `rownames<-`(., gsub(" ", "", rownames(.))) 
 
 rivdist <- data.matrix(rivdist)
-rivdist <- rivdist[rownames(rivdist) %in% rownames(freqs),
-                   colnames(rivdist) %in% rownames(freqs)]
+rivdist <- rivdist[!rownames(rivdist) %in% c("Harrison", "Raft", "Nahatlatch"),
+                   !colnames(rivdist) %in% c("Harrison", "Raft", "Nahatlatch")]
 
-# YR <- c("Andreafsky", "Tozitna", "BigSalmon", "Mayo", "Nordenskiold",
-#         "Tincup", "Klondike", "Morley", "Hoole", "Takhini", "SalmonFork")
-# rivdist <- rivdist[rownames(rivdist) %in% c(YR),
-#                    colnames(rivdist) %in% c(YR)]
-# Convert distance matrix into distance-based Moran's eigenvector maps.
-# db <- create.dbMEM.model(D.mat = rivdist, nsites = nrow(rivdist))
-# db <- create.dbMEM.model.hack(D.mat = rivdist, nsites = nrow(rivdist))
-
-pc <- pcnm(dis = rivdist)
+pc <- pcnm(dis = as.dist(rivdist))
 pcnms <- as.data.frame(pc$vectors)
- 
-  as.data.frame() %>% `rownames<-`(., c(sites$site)) # Formatting.
+
+bioclim_sub <- as.matrix(cbind(subset(bioclim, select = bioc_to_use[,1]),
+                               subset(pcnms, select = optpcnm[,1])))
+                         
+
+
 
 nmod  <- rda(freqs ~ 1, pcnms) # Null model.
 fmod  <- rda(freqs ~ ., pcnms) # Full model.

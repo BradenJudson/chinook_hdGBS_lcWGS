@@ -84,8 +84,8 @@ rast <- fasterize(water_s, rr)  # Convert land polygon into above raster.
 
 png("../plots/raster10000.png", width = 1000, height = 1000); plot(rast, col = '#0868ac', 
                                                               ylim = c(40, 75)); dev.off()
-writeRaster(rast, "../data/invraster_10000.grd", overwrite = TRUE)
-r10000 <- raster("../data/invraster_10000.grd")
+writeRaster(rast, "../data/invraster.grd", overwrite = TRUE)
+r10000 <- raster("../data/invraster.grd")
 
 sf_use_s2(TRUE) # Reinstate spherical (s2) geometry defaults.
 # Prepare sparse transition matrix for all adjacent and next-to-adjacent cells (direction = 8).
@@ -96,6 +96,8 @@ tr1 <- readRDS("waterway_transition_matrix_5k.rds")
 
 # Read in site information.
 sites <- read.delim("../data/ch2023_sequenced_adj.txt", sep = "\t")
+
+
 
 # Convert sites to an object of class SpatialPointsDataFrame.
 sitepoints <- SpatialPoints(coords = sites[,c("Longitude", "Latitude")],
@@ -192,3 +194,34 @@ ggsave("../plots/pop_distances.tiff", width = 7, height = 8, dpi = 300)
 # Remove temporary png files and save output gif.
 file.remove(list.files(pattern=".png"))
 anim_save("../plots/takhanne_distances.gif", gif)
+
+
+# PCNM visualization -----------------------------------------------------------
+
+library(vegan)
+dists <- read.csv("../data/Otsh_distances_mat.csv", row.names = 1) %>% 
+  filter(!row.names(.) %in% c("Harrison", "Raft", "Nahatlatch")) %>% 
+  .[,!c(colnames(.) %in% c("Harrison", "Raft", "Nahatlatch"))] 
+pcnms <- as.data.frame(pcnm(dis = as.dist(dists))$values)
+
+sites$Site <- gsub(" ", "", sites$Site)
+
+popdat <- merge(sites, j, by.x = "Site", by.y = 0) %>% 
+  pivot_longer(cols = c("PCNM4", "PCNM30", "PCNM36")) %>% 
+  mutate(name = as.factor(name))
+
+
+ggplot(NULL) +
+  geom_raster(data = as.data.frame(r10000$layer, xy = TRUE) %>% 
+                filter(!is.na(layer)),
+              aes(x = x, y = y), fill = "gray80") +
+  geom_point(data = q, aes(x = Longitude, y = Latitude, fill = dbMEM.2),
+             shape = 21, size = 2, colour = "black") +
+  scale_fill_continuous(high = "darkblue", low = "lightskyblue1") +
+  scale_y_continuous(limits = c(40, 66), expand = c(0,0)) +
+  scale_x_continuous(expand = c(0,0)) + coord_sf() +
+  theme_bw() + theme(panel.grid = element_blank(),
+                     legend.position = "none") +
+  labs(x = "Longitude", y = "Latitude")
+  # facet_wrap(~name, nrow = 3)
+

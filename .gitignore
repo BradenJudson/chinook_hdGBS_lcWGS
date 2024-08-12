@@ -66,3 +66,4 @@ map/dist_mat.txt
 map/distances_long.csv
 data/ch2023_sequenced_adj.txt
 comp/pops.txt
+!plots/raster.png

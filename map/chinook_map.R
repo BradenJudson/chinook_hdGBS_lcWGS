@@ -31,12 +31,15 @@ bcn <- prov[prov$NAME_1 %in% c("Alberta", "Yukon", "Northwest Territories", "Nun
 bch <- st_transform(bc_bound_hres(), crs = 4326)
 
 # Read in site information and reformat labels.
-sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>% 
+sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>%
+  mutate(site = tools::toTitleCase(tolower(gsub("\\_.*", "", Population)))) %>% 
+  filter(!site %in% c("Harrison", "Raft", "Nahatlatch")) %>% 
   arrange(Latitude) %>% 
-  mutate(site = tools::toTitleCase(tolower(gsub("\\_.*", "", Population))),
-         sitenum = as.numeric(rownames(.)))
+  mutate(sitenum = as.numeric(rownames(.))) 
 
 sites[sites$Population == "SAN_JUAN_RIVER", "site"] <- "San Juan"
+sites[sites$Population == "BIG_SALMON_RIVER", "site"] <- "Big Salmon"
+sites[sites$Population == "SALMON_FORK_RIVER", "site"] <- "Salmon Fork"
 
 # To make computations faster, only use data from focal area.
 bound <- c(ymin = 35, ymax = 70, xmin = -170, xmax = -105)
@@ -48,10 +51,10 @@ northam <- st_crop(st_read("./hydroRIVERS_data/north_america_v10/HydroRIVERS_v10
 rivers <- rbind(arctic, northam) # Combine data sources here.
 rm(arctic); rm(northam); gc()    # Only retain combined object. Clears up memory.
 
-rivers3 <- st_transform(sf::st_simplify(rivers[rivers$ORD_STRA >  2,]), crs = 4326)
+rivers3 <- st_transform(sf::st_simplify(rivers[rivers$ORD_STRA >  3,]), crs = 4326)
 
 # For labeling later - sets text values along y axis at predefined heights.
-(yv <- 55 - (55 - 40.25)*(1:(nrow(sites)/2))/nrow(sites)*2)
+(yv <- 55.5 - (55.5 - 40.5)*(1:(nrow(sites)/(57/29)))/nrow(sites)*2)
 
 
 (pnw <- ggplot(data = sites) +
@@ -78,13 +81,10 @@ rivers3 <- st_transform(sf::st_simplify(rivers[rivers$ORD_STRA >  2,]), crs = 43
           panel.background = element_rect(fill = alpha("skyblue", 1/10)),
           panel.border = element_rect(color = "black", fill = NA),
           plot.margin = unit(c(0,0,0,0), "cm")) +
-    geom_rect(aes(ymin = 40.01, ymax = 54.8, xmax = -153, xmin = -167.25),
-              colour = "black", fill = "white", alpha = 1/6, linewidth = 1/20) +
-    geom_text(data = sites[sites$sitenum <= 30, ], aes(label = paste(sitenum, ". ", site), 
-                                                       x = -167, y = yv, hjust = 0), size = 2, inherit.aes = F) +
-    geom_text(data = sites[sites$sitenum > 30, ], aes(label = paste(sitenum, ". ", site), 
-                                                      x = -160, y = yv, hjust = 0), size = 2, inherit.aes = F))
-
+    geom_rect(aes(ymin = 40.01, ymax = 55.2, xmax = -153, xmin = -167.25),
+              colour = "black", fill = "white", alpha = 1/6, linewidth = 1/20, inherit.aes = FALSE) +
+    annotate("text", x = -167, y = yv, label = c(paste(sites[sites$sitenum <= 29, "sitenum"], ". ", sites[sites$sitenum <= 29, "site"])), size = 2, hjust = 0) +
+    annotate("text", x = -160, y = yv[1:28], label = c(paste(sites[sites$sitenum >  29, "sitenum"], ". ", sites[sites$sitenum >  29, "site"])), size = 2, hjust = 0))
 
 # Inset ------------------------------------------------------------------------
 
