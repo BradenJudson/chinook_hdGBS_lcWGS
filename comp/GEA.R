@@ -32,13 +32,13 @@ rf <- function(dir) paste0(dir, list.files(pattern = ".*.frq",
   dplyr::select(c("Gpos", "MajAF")) %>% 
   pivot_wider(values_from = MajAF, names_from = Gpos)
 
-temp  <- paste0("../data/pop_frq/6b_imputed_lcWGS_subset_134k/", 
-                list.files(path = "../data/pop_frq/6b_imputed_lcWGS_subset_134k/"))
+temp  <- paste0("../data/pop_frq/2b_hdGBS_maf005_subset_134k/", 
+                list.files(path = "../data/pop_frq/2b_hdGBS_maf005_subset_134k/"))
 freqs <- as.data.frame(do.call(rbind, lapply(temp, rf))) %>% 
   mutate(Population = gsub("\\_.*","", basename(temp))) %>% 
   relocate(Population, 1)
 
-write.table(freqs, "../data/pop_frq/6b_imputed_lcWGS_subset_134k.txt", 
+write.table(freqs, "../data/pop_frq/2b_hdGBS_maf005_subset_134k.txt", 
             quote = F, row.names = F, col.names = T)
 
 
@@ -73,9 +73,6 @@ rivdist <- rivdist[!rownames(rivdist) %in% c("Harrison", "Raft", "Nahatlatch"),
 pc <- pcnm(dis = as.dist(rivdist))
 pcnms <- as.data.frame(pc$vectors)
 
-bioclim_sub <- as.matrix(cbind(subset(bioclim, select = bioc_to_use[,1]),
-                               subset(pcnms, select = optpcnm[,1])))
-                         
 
 
 
@@ -122,6 +119,7 @@ sum(rownames(freqs) == rownames(bioclim)) == nrow(bioclim)
 ################################################################################
 
 # Part I: hdGBS data -----------------------------------------------------------
+
 
 
 # Define and run RDA.

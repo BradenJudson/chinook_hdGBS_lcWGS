@@ -138,7 +138,7 @@ site_lines <- do.call("rbind", spLine_list) %>%
   mutate(pair = as.factor(paste(pop1, "-", pop2)),
          label = as.factor(paste0(pair, ": ", format(distance_m, format = "d", big.mark = ","), " (m)")))
 # write_rds(site_lines, "distance_lines.rds")
-# site_lines <- readRDS("distance_lines.rds")
+site_lines <- readRDS("distance_lines.rds")
 
 
 # Isolate unique combinations of populations to summarize distances.
@@ -151,9 +151,8 @@ hist(dists$distance_m, main = NULL, xlab = "Distance (m)")
 distmat <- as.data.frame.matrix(xtabs(distance_m ~ ., dists[,c(1:3)]))
 distmat <- cbind(Abernathy = 0, distmat); distmat <- rbind(distmat, Yeth = 0)
 distmat[4,5:39] <- distmat[5:39,4]; distmat[5:39,4] <- 0 # Fix Big Qualicum for some reason.
-distmat[lower.tri(distmat)] <- t(distmat[upper.tri(distmat)]) # Make it symmetrical across the diagonal.
+distmat <- t(distmat) # Set to lower diagonal only (easy to make class "dist" object from here).
 colnames(distmat) <- rownames(distmat) <- gsub(" ", "", rownames(distmat)) # Make naming consistent.
-sum(distmat == 0) == nrow(distmat) # Check that formatting is what we expect.
 write.csv(distmat, "../data/Otsh_distances_mat.csv")
 
 
@@ -202,26 +201,29 @@ library(vegan)
 dists <- read.csv("../data/Otsh_distances_mat.csv", row.names = 1) %>% 
   filter(!row.names(.) %in% c("Harrison", "Raft", "Nahatlatch")) %>% 
   .[,!c(colnames(.) %in% c("Harrison", "Raft", "Nahatlatch"))] 
-pcnms <- as.data.frame(pcnm(dis = as.dist(dists))$values)
+pcnms <- as.data.frame(pcnm(dis = as.dist(dists))$vector)
 
 sites$Site <- gsub(" ", "", sites$Site)
+sites <- sites[!sites$Site %in% c("Harrison", "Raft", "Nahatlatch"),]
 
-popdat <- merge(sites, j, by.x = "Site", by.y = 0) %>% 
-  pivot_longer(cols = c("PCNM4", "PCNM30", "PCNM36")) %>% 
-  mutate(name = as.factor(name))
+
+j <- cbind(sites %>% arrange(Site), pcnms %>% arrange(rownames(.))) %>% 
+  pivot_longer(cols = c("PCNM1", "PCNM2", "PCNM3", "PCNM4"))
+
 
 
 ggplot(NULL) +
   geom_raster(data = as.data.frame(r10000$layer, xy = TRUE) %>% 
                 filter(!is.na(layer)),
               aes(x = x, y = y), fill = "gray80") +
-  geom_point(data = q, aes(x = Longitude, y = Latitude, fill = dbMEM.2),
+  geom_point(data = j, aes(x = Longitude, y = Latitude, fill = value),
              shape = 21, size = 2, colour = "black") +
-  scale_fill_continuous(high = "darkblue", low = "lightskyblue1") +
+  scale_fill_continuous(high = "navy", low = "lightskyblue1") +
   scale_y_continuous(limits = c(40, 66), expand = c(0,0)) +
   scale_x_continuous(expand = c(0,0)) + coord_sf() +
   theme_bw() + theme(panel.grid = element_blank(),
                      legend.position = "none") +
-  labs(x = "Longitude", y = "Latitude")
-  # facet_wrap(~name, nrow = 3)
+  labs(x = "Longitude", y = "Latitude") +
+  facet_wrap(~name, nrow = 2, ncol = 2)
+ggsave("../plots/PCNMS1to4.tiff", width = 10, height = 8, dpi = 300)
 
