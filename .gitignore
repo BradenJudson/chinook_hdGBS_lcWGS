@@ -67,3 +67,6 @@ map/distances_long.csv
 data/ch2023_sequenced_adj.txt
 comp/pops.txt
 !plots/raster.png
+pop_gen/hdgbs_fst.R
+data/shared_snps_135k.txt
+data/Otsh_pcnms.csv

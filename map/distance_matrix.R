@@ -202,21 +202,20 @@ dists <- read.csv("../data/Otsh_distances_mat.csv", row.names = 1) %>%
   filter(!row.names(.) %in% c("Harrison", "Raft", "Nahatlatch")) %>% 
   .[,!c(colnames(.) %in% c("Harrison", "Raft", "Nahatlatch"))] 
 pcnms <- as.data.frame(pcnm(dis = as.dist(dists))$vector)
+write.csv(pcnms, "../data/Otsh_pcnms.csv")
 
 sites$Site <- gsub(" ", "", sites$Site)
 sites <- sites[!sites$Site %in% c("Harrison", "Raft", "Nahatlatch"),]
 
 
-j <- cbind(sites %>% arrange(Site), pcnms %>% arrange(rownames(.))) %>% 
-  pivot_longer(cols = c("PCNM1", "PCNM2", "PCNM3", "PCNM4"))
-
-
+cd <- cbind(sites %>% arrange(Site), pcnms %>% arrange(rownames(.))) %>% 
+  pivot_longer(cols = c("PCNM1",  "PCNM3", "PCNM4"))
 
 ggplot(NULL) +
   geom_raster(data = as.data.frame(r10000$layer, xy = TRUE) %>% 
                 filter(!is.na(layer)),
               aes(x = x, y = y), fill = "gray80") +
-  geom_point(data = j, aes(x = Longitude, y = Latitude, fill = value),
+  geom_point(data = cd, aes(x = Longitude, y = Latitude, fill = value),
              shape = 21, size = 2, colour = "black") +
   scale_fill_continuous(high = "navy", low = "lightskyblue1") +
   scale_y_continuous(limits = c(40, 66), expand = c(0,0)) +
@@ -224,6 +223,9 @@ ggplot(NULL) +
   theme_bw() + theme(panel.grid = element_blank(),
                      legend.position = "none") +
   labs(x = "Longitude", y = "Latitude") +
-  facet_wrap(~name, nrow = 2, ncol = 2)
-ggsave("../plots/PCNMS1to4.tiff", width = 10, height = 8, dpi = 300)
+  facet_wrap(~name, ncol = 1)
+
+ggsave("../plots/optimalPCNMs.tiff", width = 8, height = 12, dpi = 300)
+
+
 

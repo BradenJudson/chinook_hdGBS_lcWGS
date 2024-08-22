@@ -10,7 +10,6 @@ hdgbs <- read.vcfR("../09b_filter_branch1/snps_maf001.vcf")
 hdgl <- vcfR2genlight(hdgbs)
 
 
-
 # Part I: Indv and pop info ----------------------------------------------------
 
 sites <- read.delim(file = "../01_info_files/ch2023_sequenced.txt") %>% 
