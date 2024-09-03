@@ -70,3 +70,13 @@ comp/pops.txt
 pop_gen/hdgbs_fst.R
 data/shared_snps_135k.txt
 data/Otsh_pcnms.csv
+comp/outlier_af_comparisons
+hdGBS/imputation_comparison/
+comp/Otsh28/
+data/hdgbs_maf005_fst_matrix.csv
+data/landgen_chinook_indvs_corrected.csv
+landgen_chinook_indvs_corrected.csv
+data/fst_matrix.csv
+**.gds
+data/ch_bioclim.csv
+pop_gen/hdgbs_gds

@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-for (p in c("tidyverse", "vcfR", "dartR")) {
+for (p in c("tidyverse", "vcfR", "SNPRelate")) {
   if (!suppressMessages(require(p, character.only = T))) {
     message(paste("Installing:", p))
     install.packages(p, repos = "https://mirror.its.dal.ca/cran", dependencies = T)}
