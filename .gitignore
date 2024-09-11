@@ -9,6 +9,10 @@ writing/
 **.removed
 **.vcfsnp
 **.geno
+data/shared_samples_n362.csv
+data/indv_clusters.txt
+data/chinook_full_sample_info.csv
+data/fst/
 data/hdgbs_snps_maf2_m60.snmf/
 **.snmfProject
 data/vcf_maf005.Imiss
