@@ -100,6 +100,15 @@ ggsave("../plots/site_wise_fst.tiff",
 
 # Population Fst estimates -----------------------------------------------------
 
+# Format lcWGS Fst estimates from ANGSD.
+lc <- read.delim("../data/fst/lcwgs_full_all_pops_fst.txt", sep = "") %>% 
+  mutate(pop1 = tools::toTitleCase(str_extract(file, "[^_]+")),
+         pop2 = tools::toTitleCase(gsub("\\..*","", gsub(".*\\_", "\\1", file)))) %>% 
+  select(c(5, 4, 3))
+
+source("../../scripts/df2pairwisematrix.R") # This should work when length(pop2) == length(pop1).
+lcmat <- as.data.frame.matrix(xtabs(FstWeighted ~ ., lc[,c(1:3)]))
+
 # Retain populations shared by all datasets.
 shared_pops <- unique(read.csv("../data/shared_samples_n362.csv")[,"site_full"]) 
 
