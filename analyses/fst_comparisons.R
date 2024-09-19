@@ -1,43 +1,101 @@
 setwd("~/ots_landscape_genetics/analyses")
 
 library(tidyverse); library(vegan); library(gridExtra); library(pheatmap)
+library(reshape2); library(data.table); library(ggpmisc)
 
 
-# Ots28 SNP Fsts ---------------------------------------------------------------
-# 
-# indvs <- read.csv("../landgen_chinook_indvs_corrected.csv", row.names = 1) %>% 
-#   mutate(FID = fish_ID) %>% select(c(fish_ID, FID, site_full))
-# 
-# write.table(indvs, "../data/indv_clusters.txt", 
-#             row.names = F, col.names = F, 
-#             sep = "\t", quote = F)
-# 
-# system("plink.exe --vcf ../data/vcfs/hdgbs_subset_134kSNPs_n362_imputed.vcf  --aec --chr NC_056456.1 --fst --within ../data/indv_clusters.txt --out ../data/fst/hdgbsI_Ots28")
-# system("plink.exe --vcf ../data/vcfs/hdgbs_subset_134kSNPs_n362_original.vcf --aec --chr NC_056456.1 --fst --within ../data/indv_clusters.txt --out ../data/fst/hdgbsO_Ots28")
-# hdgbs_ori <- read.delim("../data/fst/hdgbsO_Ots28.fst") %>% rename("FSToriginal"= FST)
-# hdgbs_imp <- read.delim("../data/fst/hdgbsI_Ots28.fst") %>% rename("FSTimputed" = FST)
-# 
-# hdgbs <- merge(hdgbs_ori[,c(3,5)], hdgbs_imp[,c(3,5)], by = "POS") %>% 
-#   filter(FSToriginal > 0)
-# 
-# 
-# ggplot(data = hdgbs,
-#        aes(x = FSToriginal,
-#            y = FSTimputed)) +
-#   geom_point() + theme_bw() +
-#   stat_poly_eq(use_label(c("R2", "p")),
-#                label.x = "left",
-#                label.y = "top",
-#                small.p = TRUE)
-# 
-# 
-# 
-# 
-# 
-# 
+# Site-wise Fst Estimates ------------------------------------------------------
 
+# Identify, read in and reformat site-wise Fst files.
+snp_fst <- list.files("../data/fst/", pattern = "weir.fst", full.names = T)
+fst_dat <- lapply(snp_fst,
+                  FUN = \(x) fread(x) %>% 
+                    rename("Fst" = 3)) %>% 
+  # Rename list elements and cut off string ".weir.fst".
+  `names<-`(., str_sub(basename(snp_fst), end = -10))
 
+# Function to collapse list into a wide format dataframe with better colnames.
+wfsnps <- \(x) map_df(x, ~as.data.frame(.x), .id = "dataset") %>% 
+  rename("Fst" = 4) %>% pivot_wider(., names_from = dataset, values_from = Fst)
 
+# Return data for subset and "full" datasets considered separately.
+sub_fst_snps  <- wfsnps(fst_dat[grepl("subset",  names(fst_dat))])
+full_fst_snps <- wfsnps(fst_dat[!grepl("subset", names(fst_dat))])
+
+# From the wide-form dataframe, create a scatter plot of 
+# estimated site-wise Fst values. Set constant axis boundaries/labels.
+# Also print R2 and show OLS best fit line.
+scatterFST <- function(df, x_axis, y_axis) {
+  ggplot(data = df,
+         aes(x = {{x_axis}},
+             y = {{y_axis}})) +
+    theme_classic() +
+    geom_smooth(method = "lm",
+                alpha = 1/6,
+                color = "black",
+                linetype = "dashed") +
+    geom_point(shape = 21,
+               fill = "gray",
+               colour = "black",
+               alpha = 3/4) +
+    scale_x_continuous(limits = c(-0.05,1),
+                       breaks = seq(-0.1, 1, 1/4)) +
+    scale_y_continuous(limits = c(-0.05,1),
+                       breaks = seq(-0.1, 1, 1/4)) +
+    stat_poly_eq(use_label(c("R2", "p")),
+                 label.x = "left",
+                 label.y = "top",
+                 small.p = TRUE)
+}
+
+# Subset data scatter plots.
+(s1 <- scatterFST(sub_fst_snps, hdgbs_subset_134kSNPs_imputed, lcwgs_imputed_134kSNPs_subset) +
+    labs(x = "hdGBS subset Fst", y = "Imputed lcWGS subset Fst"))
+
+# Full data scatter plots.
+(f1 <- scatterFST(full_fst_snps, chinook_imputed_8M, hdgbs_full_imputed))
+
+# Function for creating Manhattan plots for Ots28 only. 
+manhat3 <- \(df) {
+  
+  # First pivot from wide to long form and choose chromosome.
+  lf_df <- pivot_longer(data = df[df$CHROM == "NC_056456.1",], 
+                        cols = 3:ncol(df),
+                        values_to = "Fst",
+                        names_to = "dataset")
+  
+  ggplot(data = lf_df, 
+         aes(x = POS/1e6, 
+             y = Fst)) +
+    geom_point(shape = 21,
+               fill = "gray",
+               alpha = 1/2) +
+    labs(x = "Position (Mbp)",
+         y = expression(F[ST])) +
+    theme_bw() +
+    theme(strip.background = element_rect(color = 'white', fill = NA),
+          plot.background = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          strip.placement = "inside") +
+    theme(axis.line = element_line(color = 'black')) +
+    facet_wrap( ~ dataset, ncol = 1) 
+}
+
+# manhat3(df = sub_fst_snps)
+# manhat3(df = full_fst_snps)
+
+# Arrange Manhattan and scatter plots together:
+cowplot::plot_grid(
+  manhat3(df = sub_fst_snps),
+  cowplot::plot_grid(s1, f1, ncol = 1),
+  labels = c("A", "B"),
+  rel_widths = c(2, 1)
+)
+
+ggsave("../plots/site_wise_fst.tiff", 
+       dpi = 300, width = 14, height = 7)
 
 
 # Population Fst estimates -----------------------------------------------------
@@ -70,7 +128,7 @@ custom_heatmap <- \(dist_mat, title) {
   diag(dist_mat) <- NA
   
   # Order distance matrix as above and turn off clustering algorithm.
-  # Also remove dendrograms and use a light -> dark blue color scheme.
+  # Also remove dendrograms and use a light -> dark blue colour scheme.
   # Isolate component #4 as that is the plot itself. Helps later.
   pheatmap(mat = dist_mat[pop_order, pop_order] %>% 
              # Add space before capital letter when it follows a lowercase letter.
@@ -82,13 +140,12 @@ custom_heatmap <- \(dist_mat, title) {
            main = `title`, angle_col = 90)[[4]]
 }
 
-# Replace hdGBS imputed with hdGBS non-imputed?
-
 # Make list of relevant plots.
 plot_list <- list(
-  custom_heatmap(dist_mat = fst_mats[[1]], title = "hdGBS imputed"),
-  custom_heatmap(dist_mat = fst_mats[[2]], title = "hdGBS subset"),
-  custom_heatmap(dist_mat = fst_mats[[3]], title = "lcWGS imputed")
+  custom_heatmap(dist_mat = fst_mats[[2]], title = "hdGBS"),
+  custom_heatmap(dist_mat = fst_mats[[1]], title = "hdGBS subset"),
+  custom_heatmap(dist_mat = fst_mats[[4]], title = "lcWGS imputed"),
+  custom_heatmap(dist_mat = fst_mats[[3]], title = "lcWGS imputed subset")
 )
 
 # Save plots over multiple panels. 
@@ -160,7 +217,7 @@ ffst <- p2d(fullfst)
 sfst <- p2d(subfst) %>% rename("Var2" = Var1, "Var1" = Var2)
 
 # Make a labelling schematic for plotting purposes.
-labels <- c("hdGBS", "lcWGS imputed", "lcWGS")
+labels <- c("hdGBS", "lcWGS imputed")
 
 # Plot Mantel statistics between each dataset.
 # Shared SNPs and individuals above the diagonal.
@@ -185,7 +242,7 @@ labels <- c("hdGBS", "lcWGS imputed", "lcWGS")
   scale_fill_gradient(low  = "lightblue1", 
                       high = "dodgerblue3", 
                       na.value = NA,
-                      name = expression(italic('r'))) +
+                      name = expression(italic('  r'))) +
   scale_x_discrete(position = "top", expand = c(0,0), labels = labels) +
   scale_y_discrete(expand = c(0,0), limits = rev, labels = rev(labels)))
   
@@ -193,16 +250,9 @@ ggsave("../plots/fst_mantel_matrix.tiff", dpi = 300,
        width = 10, height = 10)
   
 
-# Need to set up ggsave.
 # Make below diagonal common sites and snps.
 # Above diagonal is as-is datasets, but among common populations.
 # Need to evaluate significance statistics. If all <0.001, state in caption, otherwise
-# need to \n and include in each grid cell. 
-# Consider better/different color gradient.
-# Need improved axis labels. 
-# See two links below for using distance matrix in ggplot.
-# Need diagonal to be blanks/white.
-# For the blue pheatmap plots need to add a space to some names! (i.e., BigQualicum -> Big Qualicum)
 
 # https://stackoverflow.com/questions/48666059/plot-a-re-leveled-pairwise-distance-matrix-in-ggplot2
 # https://stackoverflow.com/questions/26838005/putting-x-axis-at-top-of-ggplot2-chart
