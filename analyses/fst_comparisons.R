@@ -22,22 +22,33 @@ wfsnps <- \(x) map_df(x, ~as.data.frame(.x), .id = "dataset") %>%
 sub_fst_snps  <- wfsnps(fst_dat[grepl("subset",  names(fst_dat))])
 full_fst_snps <- wfsnps(fst_dat[!grepl("subset", names(fst_dat))])
 
+# Establish improved labelling vector.
+plot_labs <- c("chinook_imputed_8M" = "Imputed lcWGS",
+               "hdgbs_full_imputed" = "hdGBS imputed",
+               "hdgbs_subset_134kSNPs_imputed" = "hdGBS subset imputed",
+               "lcwgs_imputed_134kSNPs_subset" = "lcWGS subset imputed")
+
 # From the wide-form dataframe, create a scatter plot of 
 # estimated site-wise Fst values. Set constant axis boundaries/labels.
 # Also print R2 and show OLS best fit line.
 scatterFST <- function(df, x_axis, y_axis) {
-  ggplot(data = df,
+  ggplot(data  = df,
          aes(x = {{x_axis}},
              y = {{y_axis}})) +
     theme_classic() +
-    geom_smooth(method = "lm",
-                alpha = 1/6,
-                color = "black",
-                linetype = "dashed") +
     geom_point(shape = 21,
-               fill = "gray",
-               colour = "black",
+               fill  = "gray",
+               colour= "black",
                alpha = 3/4) +
+    stat_smooth(method = "lm",
+                alpha  = 1/6,
+                colour = "black",
+                linewidth = 2,
+                lineend = "round") +
+    stat_smooth(method = "lm",
+                alpha  = 1/6,
+                color  = "gray90",
+                lineend = "round") +
     scale_x_continuous(limits = c(-0.05,1),
                        breaks = seq(-0.1, 1, 1/4)) +
     scale_y_continuous(limits = c(-0.05,1),
@@ -45,12 +56,13 @@ scatterFST <- function(df, x_axis, y_axis) {
     stat_poly_eq(use_label(c("R2", "p")),
                  label.x = "left",
                  label.y = "top",
-                 small.p = TRUE)
+                 small.p = TRUE) +
+    labs(x = plot_labs[[deparse(substitute(x_axis))]],
+         y = plot_labs[[deparse(substitute(y_axis))]])
 }
 
 # Subset data scatter plots.
-(s1 <- scatterFST(sub_fst_snps, hdgbs_subset_134kSNPs_imputed, lcwgs_imputed_134kSNPs_subset) +
-    labs(x = "hdGBS subset Fst", y = "Imputed lcWGS subset Fst"))
+(s1 <- scatterFST(sub_fst_snps, hdgbs_subset_134kSNPs_imputed, lcwgs_imputed_134kSNPs_subset))
 
 # Full data scatter plots.
 (f1 <- scatterFST(full_fst_snps, chinook_imputed_8M, hdgbs_full_imputed))
@@ -62,34 +74,35 @@ manhat3 <- \(df) {
   lf_df <- pivot_longer(data = df[df$CHROM == "NC_056456.1",], 
                         cols = 3:ncol(df),
                         values_to = "Fst",
-                        names_to = "dataset")
+                        names_to  = "dataset")
   
-  ggplot(data = lf_df, 
+  ggplot(data  = lf_df, 
          aes(x = POS/1e6, 
              y = Fst)) +
     geom_point(shape = 21,
-               fill = "gray",
-               alpha = 1/2) +
+               fill  = "gray80",
+               alpha = 4/5) +
     labs(x = "Position (Mbp)",
          y = expression(F[ST])) +
     theme_bw() +
-    theme(strip.background = element_rect(color = 'white', fill = NA),
-          plot.background = element_blank(),
+    theme(strip.background = element_rect(color = NA, fill = NA),
+          plot.background  = element_blank(),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           panel.border = element_blank(),
           strip.placement = "inside") +
     theme(axis.line = element_line(color = 'black')) +
-    facet_wrap( ~ dataset, ncol = 1) 
+    # free_x necessary to keep bottom panel across facets.
+    facet_wrap( ~ dataset, ncol = 1, scales = "free_x", 
+                labeller = as_labeller(plot_labs)) 
 }
 
-# manhat3(df = sub_fst_snps)
-# manhat3(df = full_fst_snps)
-
-# Arrange Manhattan and scatter plots together:
+# Arrange Manhattan and scatter plots together.
+# Left (A) is Ots28 only, and right (B) is genome-wide.
 cowplot::plot_grid(
   manhat3(df = sub_fst_snps),
-  cowplot::plot_grid(s1, f1, ncol = 1),
+  cowplot::plot_grid(s1, f1, 
+           ncol = 1, scale = 9/10),
   labels = c("A", "B"),
   rel_widths = c(2, 1)
 )
@@ -179,11 +192,10 @@ for (j in 1:length(fst_mats)) {
       fmat2 = names(fst_mats[k]),
       mstat = round(vm$statistic, 3),
       msign = vm$signif
-    )
+      )
     
-    mantel_list[[length(mantel_list)+1]] <- df
-    
-  }
+    mantel_list[[length(mantel_list)+1]] <- df }
+  
 }
 
 # Join output results together in a data frame.
@@ -247,21 +259,20 @@ labels <- c("hdGBS", "lcWGS imputed")
         panel.border = element_blank(),
         axis.ticks   = element_blank(),
         axis.text.x  = element_text(angle = 45, hjust  = 0),
-        axis.text = element_text(size = 12, colour = "black")) +
+        axis.text    = element_text(size = 12, colour = "black")) +
   scale_fill_gradient(low  = "lightblue1", 
                       high = "dodgerblue3", 
                       na.value = NA,
                       name = expression(italic('  r'))) +
   scale_x_discrete(position = "top", expand = c(0,0), labels = labels) +
-  scale_y_discrete(expand = c(0,0), limits = rev, labels = rev(labels)))
+  scale_y_discrete(expand = c(0,0), labels = rev(labels), limits = rev))
   
 ggsave("../plots/fst_mantel_matrix.tiff", dpi = 300,
        width = 10, height = 10)
-  
 
 # Make below diagonal common sites and snps.
 # Above diagonal is as-is datasets, but among common populations.
-# Need to evaluate significance statistics. If all <0.001, state in caption, otherwise
+# Need to evaluate significance statistics. If all <0.001, state in caption.
 
 # https://stackoverflow.com/questions/48666059/plot-a-re-leveled-pairwise-distance-matrix-in-ggplot2
 # https://stackoverflow.com/questions/26838005/putting-x-axis-at-top-of-ggplot2-chart
