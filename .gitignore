@@ -19,6 +19,8 @@ data/vcf_maf005.Imiss
 comp/ref_mismatch.csv
 **.xlsx
 data/hdgbs_sub_pcascores.csv
+analyses/positions.txt
+data/vcfs/
 **.mean
 **.frq
 **.lmiss

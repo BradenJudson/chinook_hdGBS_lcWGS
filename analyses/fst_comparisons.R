@@ -10,7 +10,7 @@ library(reshape2); library(data.table); library(ggpmisc)
 snp_fst <- list.files("../data/fst/", pattern = "weir.fst", full.names = T)
 fst_dat <- lapply(snp_fst,
                   FUN = \(x) fread(x) %>% 
-                    rename("Fst" = 3)) %>% 
+                        rename("Fst" = 3)) %>% 
   # Rename list elements and cut off string ".weir.fst".
   `names<-`(., str_sub(basename(snp_fst), end = -10))
 
@@ -65,7 +65,7 @@ scatterFST <- function(df, x_axis, y_axis) {
 (s1 <- scatterFST(sub_fst_snps, hdgbs_subset_134kSNPs_imputed, lcwgs_imputed_134kSNPs_subset))
 
 # Full data scatter plots.
-(f1 <- scatterFST(full_fst_snps, chinook_imputed_8M, hdgbs_full_imputed))
+(f1 <- scatterFST(full_fst_snps, hdgbs_full_imputed, chinook_imputed_8M))
 
 # Function for creating Manhattan plots for Ots28 only. 
 manhat3 <- \(df) {
@@ -85,16 +85,18 @@ manhat3 <- \(df) {
     labs(x = "Position (Mbp)",
          y = expression(F[ST])) +
     theme_bw() +
+    facet_wrap( ~ dataset, ncol = 1, scales = "free_x", 
+                labeller = as_labeller(plot_labs)) +
     theme(strip.background = element_rect(color = NA, fill = NA),
           plot.background  = element_blank(),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           panel.border = element_blank(),
-          strip.placement = "inside") +
-    theme(axis.line = element_line(color = 'black')) +
+          strip.placement = "inside",
+          strip.text.x = element_text(size = 12),
+          axis.line    = element_line(colour = "black")) 
     # free_x necessary to keep bottom panel across facets.
-    facet_wrap( ~ dataset, ncol = 1, scales = "free_x", 
-                labeller = as_labeller(plot_labs)) 
+    
 }
 
 # Arrange Manhattan and scatter plots together.
@@ -103,11 +105,13 @@ cowplot::plot_grid(
   manhat3(df = sub_fst_snps),
   cowplot::plot_grid(s1, f1, 
            ncol = 1, scale = 9/10),
-  labels = c("A", "B"),
+  labels = c("A)", "B)"),
   rel_widths = c(2, 1)
 )
 
 ggsave("../plots/site_wise_fst.tiff", 
+       dpi = 300, width = 14, height = 7)
+ggsave("../plots/site_wise_fst.png", 
        dpi = 300, width = 14, height = 7)
 
 
