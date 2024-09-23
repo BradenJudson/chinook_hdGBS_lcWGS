@@ -117,15 +117,6 @@ ggsave("../plots/site_wise_fst.png",
 
 # Population Fst estimates -----------------------------------------------------
 
-# Format lcWGS Fst estimates from ANGSD.
-lc <- read.delim("../data/fst/lcwgs_full_all_pops_fst.txt", sep = "") %>% 
-  mutate(pop1 = tools::toTitleCase(str_extract(file, "[^_]+")),
-         pop2 = tools::toTitleCase(gsub("\\..*","", gsub(".*\\_", "\\1", file)))) %>% 
-  select(c(5, 4, 3))
-
-source("../../scripts/df2pairwisematrix.R") # This should work when length(pop2) == length(pop1).
-lcmat <- as.data.frame.matrix(xtabs(FstWeighted ~ ., lc[,c(1:3)]))
-
 # Retain populations shared by all datasets.
 shared_pops <- unique(read.csv("../data/shared_samples_n362.csv")[,"site_full"]) 
 
@@ -168,15 +159,17 @@ custom_heatmap <- \(dist_mat, title) {
 
 # Make list of relevant plots.
 plot_list <- list(
-  custom_heatmap(dist_mat = fst_mats[[2]], title = "hdGBS"),
-  custom_heatmap(dist_mat = fst_mats[[1]], title = "hdGBS subset"),
-  custom_heatmap(dist_mat = fst_mats[[4]], title = "lcWGS imputed"),
-  custom_heatmap(dist_mat = fst_mats[[3]], title = "lcWGS imputed subset")
+  custom_heatmap(dist_mat = fst_mats$hdgbs_original_full, title = "hdGBS"),
+  custom_heatmap(dist_mat = fst_mats$hdgbs_original_134kSNPs_n362_subset, title = "hdGBS subset"),
+  custom_heatmap(dist_mat = fst_mats$lcwgs_imputed_8MSNPs_full, title = "lcWGS imputed"),
+  custom_heatmap(dist_mat = fst_mats$lcwgs_imputed_134kSNPs_subset, title = "lcWGS imputed subset"),
+  custom_heatmap(dist_mat = fst_mats$lcwgs_angsd_weightedfst_matrix, title = "lcWGS"),
+  custom_heatmap(dist_mat = fst_mats$lcwgs_angsd_subset134kSNPs_fst_matrix, title = "lcWGS subset")
 )
 
 # Save plots over multiple panels. 
-heatmap_panels <- do.call(grid.arrange, c(plot_list, ncol = 2, nrow = 2))
-ggsave("../plots/fst_heatmap.tiff", heatmap_panels, dpi = 300, width = 15, height = 15)
+heatmap_panels <- do.call(grid.arrange, c(plot_list, ncol = 2))
+ggsave("../plots/fst_heatmap.tiff", heatmap_panels, dpi = 300, width = 15, height = 20)
 #### GOAL IS TO MAKE ABOVE 3x2 FOR ALL DATASETS (ncol = 2, nrow = 3) ####
 
 
@@ -242,7 +235,7 @@ ffst <- p2d(fullfst)
 sfst <- p2d(subfst) %>% rename("Var2" = Var1, "Var1" = Var2)
 
 # Make a labelling schematic for plotting purposes.
-labels <- c("hdGBS", "lcWGS imputed")
+labels <- c("hdGBS", "lcWGS","lcWGS imputed")
 
 # Plot Mantel statistics between each dataset.
 # Shared SNPs and individuals above the diagonal.
@@ -252,9 +245,10 @@ labels <- c("hdGBS", "lcWGS imputed")
             aes(Var2, Var1, fill= value)) +
   geom_text(data = ffst, aes(Var2, Var1, label = ifelse(is.na(value), 
             "", sprintf("%0.3f",value))), size = 10, colour = "white") +
-  geom_tile(data = sfst, aes(Var2, Var1, fill= value)) +
-    geom_text(data = sfst, aes(Var2, Var1, label = ifelse(is.na(value), 
-              "", sprintf("%0.3f",value))), size = 10, colour = "white") +
+  geom_tile(data = sfst, 
+            aes(Var2, Var1, fill= value)) +
+  geom_text(data = sfst, aes(Var2, Var1, label = ifelse(is.na(value), 
+            "", sprintf("%0.3f",value))), size = 10, colour = "white") +
   labs(x = NULL, y = NULL) +
   theme(legend.position = "right",
         panel.grid   = element_blank(),
@@ -273,13 +267,4 @@ labels <- c("hdGBS", "lcWGS imputed")
   
 ggsave("../plots/fst_mantel_matrix.tiff", dpi = 300,
        width = 10, height = 10)
-
-# Make below diagonal common sites and snps.
-# Above diagonal is as-is datasets, but among common populations.
-# Need to evaluate significance statistics. If all <0.001, state in caption.
-
-# https://stackoverflow.com/questions/48666059/plot-a-re-leveled-pairwise-distance-matrix-in-ggplot2
-# https://stackoverflow.com/questions/26838005/putting-x-axis-at-top-of-ggplot2-chart
-
-
 
