@@ -1,6 +1,6 @@
 setwd("~/ots_landscape_genetics/analyses")
 
-library(tidyverse); library(pcadapt); library(qvalue)
+library(tidyverse); library(pcadapt); library(qvalue); library(cowplot)
 
 # Function for converting VCF to bed (usable by pcadapt).
 # Assumes VCF is gzipped.
@@ -52,84 +52,35 @@ chrs <- read.delim("../data/otsh_sequence_report.tsv") %>%
          LGN = as.factor(str_sub(Ots, 4, 5)))
 
 
+Ots28 <- rbind(hdgbs_imp[hdgbs_imp$CHROM == "NC_056456.1",],
+               hdgbs_ori[hdgbs_ori$CHROM == "NC_056456.1",],
+               lcwgs_imp[lcwgs_imp$CHROM == "NC_056456.1",]) %>% 
+  mutate(fillcol = case_when( # Awkward way to assign colours based on two simultaneous conditions.
+    CHROM %in% unique(chrs$RefSeq.seq.accession)[seq(1, length(unique(chrs$RefSeq.seq.accession)), 2)] & out == "N" ~ "gray90",
+    CHROM %in% unique(chrs$RefSeq.seq.accession)[seq(2, length(unique(chrs$RefSeq.seq.accession)), 2)] & out == "N" ~ "gray30",
+    out == 'Y' ~ "red"
+  ))
 
-
-
-# "Custom" ggplot-based Manhattan plot function.
-####
-###
-##
-##
-## TO DO:
-# See: https://bookdown.org/ndphillips/YaRrr/using-if-then-statements-in-functions.html
-# add if statement for full genome vs. Ots28.
-# Currently only returns first plot - need to add return or something?
-#
-#
-
-
-
-
-
-
-
-ggManhattan <- \(df, gRegion) {
-  
-  # Add 'Ots##' style chromosome names.
-  df <- merge(df, 
-              chrs[,c("RefSeq.seq.accession","Ots")], 
-              by.x = "CHROM", by.y = "RefSeq.seq.accession") %>% 
-    mutate(fillcol = case_when( # Awkward way to assign colours based on two simultaneous conditions.
-      CHROM %in% unique(df$CHROM)[seq(1, length(unique(df$CHROM)), 2)] & out == "N" ~ "gray90",
-      CHROM %in% unique(df$CHROM)[seq(2, length(unique(df$CHROM)), 2)] & out == "N" ~ "gray30",
-      out == 'Y' ~ "red"
-    ))
-  
-  if(gRegion == "Ots28") {
-    ggplot(data = df, 
-           aes(x = POS,
-               y = POS)) +
-             geom_point()
-  }
-  
-  if(gRegion == "Full") {
-  
-  ggplot() + theme_classic() +
-    geom_point(data = df,
-               aes(x = POS,
-                   y = -log10(pval),
-                   colour = fillcol, 
-                   fill   = fillcol),
-               shape = 21) +
+(chromplot <- ggplot(data = Ots28, 
+                     aes(x = POS/1e6,
+                         y = -log(pval),
+                         colour = fillcol,
+                         fill   = fillcol)) +
+    geom_point(shape = 21) +
+    theme_classic() +
     scale_fill_identity() +
     scale_colour_identity() +
-    labs(x = NULL,
+    labs(x = "Position (Mbp)",
          y = expression(-log[10](p-value))) +
-    facet_grid(cols = vars(Ots),
-               scales  = "free_x",
-               switch  = 'x',
-               space   = "free_x") +
-    theme(axis.text.x  = element_blank(),
-          axis.title.y = element_text(size = 16),
-          axis.ticks.x = element_blank(),
+    theme(axis.title.y = element_text(size = 12),
           panel.grid   = element_blank(),
-          panel.spacing= unit(0.1, "cm"), 
+          legend.position  = "none",
           strip.background = element_blank(),
-          strip.text.x = element_text(size = 7, 
-                                      angle = 67.3),
-          legend.position = "none",
-          plot.title = element_text(hjust = 0.5),
-          strip.placement = "outside")
-  }
+          strip.placement  = "inside",
+          strip.text = element_text(size = 12)) +
+    facet_wrap(~data, ncol = 1, scales = "free_x"))
 
 
-}
-
-
-ggManhattan(hdgbs_imp, gRegion = "Full")
-ggManhattan(hdgbs_ori, gRegion = "Full")
-ggManhattan(lcwgs_imp, gRegion = "Ots28")
-
-ggsave("../plots/hdgbs_sub_imputed_manhattan.tiff",
-       dpi = 300, width = 20, height = 6)
+ggsave("../plots/pcadapt_manhattan.tiff",
+       dpi = 300, width = 10, height = 10)
 

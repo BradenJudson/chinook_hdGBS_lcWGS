@@ -5,6 +5,7 @@
 *.vcf
 *.vcf.gz
 *.tiff
+data/pca/
 writing/
 **.removed
 **.vcfsnp
