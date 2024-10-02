@@ -1,11 +1,12 @@
 setwd("~/ots_landscape_genetics/analyses")
 
-library(tidyverse); library(pcadapt); library(qvalue); library(cowplot)
+library(tidyverse); library(pcadapt); library(qvalue); 
+library(cowplot); library(bigutilsr)
 
 # Function for converting VCF to bed (usable by pcadapt).
 # Assumes VCF is gzipped.
-vcf2pc <- \(vcf_file) system(paste0("plink.exe --vcf ", vcf_file, 
-                           " --make-bed --aec --double-id --out ", 
+vcf2pc <- \(vcf_file) system(paste0("plink.exe --vcf", vcf_file, 
+                           " --make-bed --aec --double-id --out", 
                            gsub("\\.vcf.gz", "", vcf_file)))
 
 # Make bed files.
@@ -52,24 +53,18 @@ chrs <- read.delim("../data/otsh_sequence_report.tsv") %>%
          LGN = as.factor(str_sub(Ots, 4, 5)))
 
 
+# Isolate Ots28 for current purposes.
 Ots28 <- rbind(hdgbs_imp[hdgbs_imp$CHROM == "NC_056456.1",],
                hdgbs_ori[hdgbs_ori$CHROM == "NC_056456.1",],
-               lcwgs_imp[lcwgs_imp$CHROM == "NC_056456.1",]) %>% 
-  mutate(fillcol = case_when( # Awkward way to assign colours based on two simultaneous conditions.
-    CHROM %in% unique(chrs$RefSeq.seq.accession)[seq(1, length(unique(chrs$RefSeq.seq.accession)), 2)] & out == "N" ~ "gray90",
-    CHROM %in% unique(chrs$RefSeq.seq.accession)[seq(2, length(unique(chrs$RefSeq.seq.accession)), 2)] & out == "N" ~ "gray30",
-    out == 'Y' ~ "red"
-  ))
+               lcwgs_imp[lcwgs_imp$CHROM == "NC_056456.1",]) 
 
 (chromplot <- ggplot(data = Ots28, 
                      aes(x = POS/1e6,
                          y = -log(pval),
-                         colour = fillcol,
-                         fill   = fillcol)) +
-    geom_point(shape = 21) +
+                         colour = out)) +
+    scale_color_manual(values = c("gray70", "red1")) +
+    geom_point() +
     theme_classic() +
-    scale_fill_identity() +
-    scale_colour_identity() +
     labs(x = "Position (Mbp)",
          y = expression(-log[10](p-value))) +
     theme(axis.title.y = element_text(size = 12),
@@ -83,4 +78,57 @@ Ots28 <- rbind(hdgbs_imp[hdgbs_imp$CHROM == "NC_056456.1",],
 
 ggsave("../plots/pcadapt_manhattan.tiff",
        dpi = 300, width = 10, height = 10)
+
+
+# ------------------------------------------------------------------------------
+
+# p-value calculations from https://github.com/Rosemeis/pcangsd/blob/master/scripts/pcadapt.R
+
+lcwgs_outliers <- \(zscores, positions, K) {
+  # Read in zscores.
+  zscores <- read.table(zscores) %>% 
+    `colnames<-`(., gsub("V", "PC", colnames(.)))
+  K <- ncol(zscores)
+  
+  # Calcuate distances, p-values and q-values.
+  dist <- dist_ogk(as.matrix(zscores))
+  pval <- pchisq(dist, df = K, lower.tail = FALSE)
+  qval <- qvalue(pval)$qvalues
+  
+  # Genomic positions for each locus.
+  positions <- read.table(positions, header = T) %>% 
+    mutate(pos = as.numeric(gsub(".*\\.1\\_", "", marker)),
+           chr = as.factor(gsub("\\.1\\_.*", "\\.1", marker))) %>% 
+    select(c(chr, pos))
+
+  # Bind it all together and return.
+  data <- cbind(positions, 
+                data.frame(
+                  stat = dist, 
+                  pval = pval,
+                  qval = qval)
+  )
+}
+
+lcwgs_full <- lcwgs_outliers("../data/fst/lcwgs_m15_maf005.pcadapt.zscores",
+                             "../data/lcwgs_8MSNPs_positions.txt", K = 5)
+
+(chr_out <- lcwgs_full[lcwgs_full$qval < 0.00001,] %>% 
+    group_by(chr) %>% tally())
+
+(ots28_full <- ggplot(data = lcwgs_full %>% 
+       filter(chr == "NC_056456.1"),
+       aes(x = pos/1e6, 
+           y = -log10(pval))) +
+  geom_point() +  theme_classic() +
+  theme(axis.title.y = element_text(size = 12),
+        panel.grid   = element_blank(),
+        legend.position  = "none",
+        strip.background = element_blank(),
+        strip.placement  = "inside",
+        strip.text = element_text(size = 12)) +
+  labs(x = "Position (Mbp)",
+       y = expression(-log[10](p-value)))) 
+
+
 

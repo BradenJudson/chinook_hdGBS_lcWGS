@@ -124,6 +124,8 @@ cbio <- biovar[biovar$period == "1970-2000", colnames(biovar) %ni% c("period", "
 (bcor <- abs(cor(cbio[,-1]))) # Excludes site info.
 bcor[!lower.tri(bcor)] <- 0; hist(bcor)
 
+ev <- biovar[biovar$period == "1970-2000", c("bio1", "bio5", "bio8", "bio15", "bio16")]
+
 # Retain variables with less than 80% correlation.
 (ev <- cbio[, !apply(bcor, 2, function(x) any(x > 0.80))])
 dim(ev) # number of variables retained
@@ -175,9 +177,9 @@ ggplot(data = pop_climPC,
                                 ticks = F, frame.colour = "black",
                                 reverse = T),
          color = guide_legend(nrow = 1)) +
-  coord_cartesian(ylim = c(-4, 3.5), clip = "off") +
-  annotate("text", label = "North", x = -3.9, y = 4.4, hjust = 1) +
-  annotate("text", label = "South", x = 3.3, y = 4.4, hjust = -1)
+  coord_cartesian(ylim = c(-3.5, 3.6), clip = "off") +
+  annotate("text", label = "North", x = -3.3, y = 4.3, hjust = 1) +
+  annotate("text", label = "South", x = 2, y = 4.3, hjust = -1)
   
 
 

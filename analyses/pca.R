@@ -28,10 +28,11 @@ format_eigenvec <- \(eigenvec_file) {
                 gsub(pattern = "\\.dedup.clip.bam", "", id)))) %>% # Remove bam suffix.   
     merge(., indvs, by.x = "id", by.y = "fish_ID") %>%             # Add populations.
     mutate(site_full = gsub("[[:space:]]", "", site_full)) %>%     # For consistent merging.
-    merge(., sites[,c("Site", "Latitude")], by.x = "site_full",    # Add site latitudes.
+    merge(., sites[,c("Site", "Latitude")], by.x = "site_full",    # Add site latitudes (for plotting).
           by.y = "Site", all.x = T) %>%                            # Keep all individuals.
     filter(site_full %in% shared_pops) %>%                         # Discard unwanted data.
-    mutate(site_full = factor(site_full))                          # Set site as a factor.
+    mutate(site_full = factor(str_sub(gsub("([A-Z])",              # Set site as a factor.
+                                      " \\1", site_full), 2)))     # Re-add spaces before second capitals (SanJuan -> San Juan).
   
   df$site_full <- reorder(df$site_full, df$Latitude)               # Order factor wrt latitude.
 
@@ -62,9 +63,9 @@ vcf_pca <- \(df, eigenval_file, title, legpos) {
                                   labels = levels(unique(df$site_full))) +
                 theme(legend.title = element_blank(),
                       legend.position = {{legpos}},
-                      legend.text = element_text(size = 10)) + 
+                      legend.text = element_text(size = 12)) + 
                 ggtitle({{title}}) +
-                guides(fill = guide_legend(ncol = 1, byrow = TRUE)) +
+                guides(fill = guide_legend(ncol = 2, byrow = TRUE)) +
                 labs(x = paste0("PC1 (", PC1, "%)"), 
                      y = paste0("PC2 (", PC2, "%)"))) 
   
@@ -72,7 +73,7 @@ vcf_pca <- \(df, eigenval_file, title, legpos) {
 
 # Visualize PCA for each "vcf-based" dataset. Add legend to first plot only.
 (hdg_f <- vcf_pca(df = hdgbs_full_pca, "../data/pca/hdgbs_full_original.eigenval", title = "hdGBS", legpos = "right"))
-(hdg_s <- vcf_pca(df = hdgbs_sub_pca, "../data/pca/hdgbs_subset_original.eigenval", title = "hdGBS subset", legpos = "none"))
+(hdg_s <- vcf_pca(df = hdgbs_sub_pca,  "../data/pca/hdgbs_subset_original.eigenval", title = "hdGBS subset", legpos = "none"))
 (lci_f <- vcf_pca(df = lcwgs_f.imputed, "../data/pca/lcWGS_full_8MSNPs_imputed.eigenval", title = "lcWGS imputed", legpos = "none"))
 (lci_s <- vcf_pca(df = lcwgs_s.imputed, "../data/pca/lcWGS_subset_imputed.eigenval", title = "lcWGS imputed subset", legpos = "none"))
 
@@ -86,7 +87,7 @@ lcwgs_pca <- \(cov_mat, bam_list, title) {
     mutate(fish_ID = gsub("309\\-", "309\\.", gsub(".dedup.clip.bam", "", 
                      gsub("^.*IDT_i\\d{1,3}_\\d{1,3}\\.", "", file)))) 
   
-  cov <- read.table({{cov_mat}})                  # Read in covariance matrix.
+  cov    <- read.table({{cov_mat}})               # Read in covariance matrix.
   mmepca <- eigen(cov)                            # Extract eigenvalues.
   eigvec <- as.data.frame(mmepca$vectors) %>%     # Extract eigenvectors.
     `colnames<-`(., gsub("V", "PC", colnames(.))) # Rename columns.
@@ -102,14 +103,16 @@ lcwgs_pca <- \(cov_mat, bam_list, title) {
           by.x = "site_full", 
           by.y = "Site", all.x = T) %>% 
     filter(site_full %in% shared_pops)           # Remove non-shared populations.
+
     
   # Visualize PCA consistent with above "vcf-based" PCAs.
-  (pc_scatter <- ggplot(data = pca_dat,
+  (pc_scatter <- ggplot(data  = pca_dat,
                         aes(x = PC1, y = PC2,
                             group = site_full,
-                            fill = factor(Latitude))) +
+                            fill  = factor(Latitude))) +
       geom_point(shape = 21) + theme_bw() +
       scale_fill_manual(values = c(viridis_pal(option = "D")(length(unique(pca_dat$site_full))))) +
+      guides(fill = guide_legend(ncol = 2, byrow = TRUE)) +
       theme(legend.title = element_blank(),
             legend.position = "none") +
       labs(x = paste0("PC1 (", PC1, "%)"), 
@@ -118,23 +121,22 @@ lcwgs_pca <- \(cov_mat, bam_list, title) {
 
 }
 
-(lcwgs_full <- lcwgs_pca(cov_mat = "../data/pca/lcwgs_full_8MSNPs.cov",
+(lcwgs_full <- lcwgs_pca(cov_mat  = "../data/pca/lcwgs_full_8MSNPs.cov",
                          bam_list = "../data/lcwgs_bam_list_n453.txt",
                          title = "lcWGS"))
+
+# (lcwgs_sub <- lcwgs_pca(cov_mat  = "../data/pca/lcwgs_subset.cov",
+#                         bam_list = "../data/lcwgs_bam_list_n453.txt",
+#                         title = "lcWGS subset"))
 
 # First, extract the legend of one plot.
 pop_legend <- cowplot::get_legend(hdg_f)
 
 # Arrange PCAs in an organized grid with a shared legend structure.
 (all_pcas  <- cowplot::plot_grid(cowplot::plot_grid(plotlist = list(
-  hdg_f + theme(legend.position ="none"), hdg_s, lci_f, lci_s, 
-  lcwgs_full), ncol = 2, align = "VH"), pop_legend, ncol = 2,
+  hdg_f + theme(legend.position = "none"), hdg_s, lci_f, lci_s, 
+  lcwgs_full), ncol = 2, align  = "VH"), pop_legend, ncol = 2,
   rel_widths = c(6,1)))
 
 ggsave("../plots/all_pcas.tiff", dpi = 300,
        width = 12, height = 12, bg = 'white')
-
-
-###### NEED TO USE REGEX TO RE-ADD SPACE TO LEGEND BETWEEN lower->CAPITAL (e.g., SanJuan -> San Juan) #####
-###########################################################################################################
-

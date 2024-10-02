@@ -56,6 +56,21 @@ rivers3 <- st_transform(sf::st_simplify(rivers[rivers$ORD_STRA >  3,]), crs = 43
 # For labeling later - sets text values along y axis at predefined heights.
 (yv <- 55.5 - (55.5 - 40.5)*(1:(nrow(sites)/(57/29)))/nrow(sites)*2)
 
+# p <- ggplot() +
+#   geom_sf(data = USA, fill = "gray90", linewidth = 1/10) +
+#   geom_sf(data = bcn, fill = "gray90", linewidth = 1/10) +
+#   geom_sf(data = bch, fill = "gray90", linewidth = 1/10) +
+#   ggspatial::annotation_north_arrow(location = "bl",
+#                                     style = ggspatial::north_arrow_fancy_orienteering()) +
+#   ggspatial::annotation_scale(location = "bl", 
+#                               pad_y = unit(1/10, "cm"), 
+#                               width_hint = 1/10) +
+#   coord_sf(xlim = c(-115, -175), ylim = c(35, 70)) +
+#   theme_minimal() +
+#   theme(legend.position = "right", panel.grid = element_blank(), 
+#         panel.background = element_rect(fill = alpha("skyblue", 1/10)),
+#         panel.border = element_rect(color = "black", fill = NA),
+#         plot.margin = unit(c(0,0,0,0), "cm"))
 
 (pnw <- ggplot(data = sites) +
     geom_sf(data = USA, fill = "gray90", linewidth = 1/10) +
@@ -128,5 +143,5 @@ ggdraw(plot = pnw) +
   height = 0.5)
 
 ggsave("../plots/map_winset.tiff", dpi = 300, 
-       width = 6, height = 6)
+       width = 6, height = 6, bg = 'white')
 

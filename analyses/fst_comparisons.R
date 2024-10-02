@@ -110,7 +110,8 @@ cowplot::plot_grid(
 )
 
 ggsave("../plots/site_wise_fst.tiff", 
-       dpi = 300, width = 14, height = 7)
+       dpi = 300, width = 14, height = 7, bg = "white")
+
 ggsave("../plots/site_wise_fst.png", 
        dpi = 300, width = 14, height = 7)
 
@@ -267,4 +268,5 @@ labels <- c("hdGBS", "lcWGS","lcWGS imputed")
   
 ggsave("../plots/fst_mantel_matrix.tiff", dpi = 300,
        width = 10, height = 10)
+
 
