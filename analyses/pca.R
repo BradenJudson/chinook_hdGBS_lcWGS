@@ -65,7 +65,7 @@ vcf_pca <- \(df, eigenval_file, title, legpos) {
                       legend.position = {{legpos}},
                       legend.text = element_text(size = 12)) + 
                 ggtitle({{title}}) +
-                guides(fill = guide_legend(ncol = 2, byrow = TRUE)) +
+                guides(fill = guide_legend(ncol = 1, byrow = TRUE)) +
                 labs(x = paste0("PC1 (", PC1, "%)"), 
                      y = paste0("PC2 (", PC2, "%)"))) 
   
@@ -125,9 +125,9 @@ lcwgs_pca <- \(cov_mat, bam_list, title) {
                          bam_list = "../data/lcwgs_bam_list_n453.txt",
                          title = "lcWGS"))
 
-# (lcwgs_sub <- lcwgs_pca(cov_mat  = "../data/pca/lcwgs_subset.cov",
-#                         bam_list = "../data/lcwgs_bam_list_n453.txt",
-#                         title = "lcWGS subset"))
+(lcwgs_subs <- lcwgs_pca(cov_mat  = "../data/pca/angsd_subset134ksnps.cov",
+                         bam_list = "../data/lcwgs_bam_list_n453.txt",
+                         title = "lcWGS"))
 
 # First, extract the legend of one plot.
 pop_legend <- cowplot::get_legend(hdg_f)
@@ -135,8 +135,8 @@ pop_legend <- cowplot::get_legend(hdg_f)
 # Arrange PCAs in an organized grid with a shared legend structure.
 (all_pcas  <- cowplot::plot_grid(cowplot::plot_grid(plotlist = list(
   hdg_f + theme(legend.position = "none"), hdg_s, lci_f, lci_s, 
-  lcwgs_full), ncol = 2, align  = "VH"), pop_legend, ncol = 2,
-  rel_widths = c(6,1)))
+  lcwgs_full, lcwgs_subs), ncol = 2, align  = "VH"), pop_legend, 
+  ncol = 2, rel_widths = c(6,1)))
 
 ggsave("../plots/all_pcas.tiff", dpi = 300,
        width = 12, height = 12, bg = 'white')
