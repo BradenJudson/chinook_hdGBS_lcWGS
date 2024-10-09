@@ -56,21 +56,6 @@ rivers3 <- st_transform(sf::st_simplify(rivers[rivers$ORD_STRA >  3,]), crs = 43
 # For labeling later - sets text values along y axis at predefined heights.
 (yv <- 55.5 - (55.5 - 40.5)*(1:(nrow(sites)/(57/29)))/nrow(sites)*2)
 
-# p <- ggplot() +
-#   geom_sf(data = USA, fill = "gray90", linewidth = 1/10) +
-#   geom_sf(data = bcn, fill = "gray90", linewidth = 1/10) +
-#   geom_sf(data = bch, fill = "gray90", linewidth = 1/10) +
-#   ggspatial::annotation_north_arrow(location = "bl",
-#                                     style = ggspatial::north_arrow_fancy_orienteering()) +
-#   ggspatial::annotation_scale(location = "bl", 
-#                               pad_y = unit(1/10, "cm"), 
-#                               width_hint = 1/10) +
-#   coord_sf(xlim = c(-115, -175), ylim = c(35, 70)) +
-#   theme_minimal() +
-#   theme(legend.position = "right", panel.grid = element_blank(), 
-#         panel.background = element_rect(fill = alpha("skyblue", 1/10)),
-#         panel.border = element_rect(color = "black", fill = NA),
-#         plot.margin = unit(c(0,0,0,0), "cm"))
 
 (pnw <- ggplot(data = sites) +
     geom_sf(data = USA, fill = "gray90", linewidth = 1/10) +
@@ -143,5 +128,33 @@ ggdraw(plot = pnw) +
   height = 0.5)
 
 ggsave("../plots/map_winset.tiff", dpi = 300, 
+       width = 6, height = 6, bg = 'white')
+
+
+
+# Simplified PPT version -------------------------------------------------------
+
+library(viridis)
+
+(chmap <- ggplot() +
+   geom_sf(data = USA, fill = "gray90", linewidth = 1/10) +
+   geom_sf(data = bcn, fill = "gray90", linewidth = 1/10) +
+   geom_sf(data = bch, fill = "gray90", linewidth = 1/10) +
+   geom_sf(data = rivers3,   colour = "skyblue",  linewidth = 1/4) +
+   geom_point(data = sites, size = 2.5, stroke = 1/3,
+              shape = 21, color = "black",
+              aes(x = Longitude, y = Latitude, fill = as.factor(Latitude))) +
+   scale_fill_manual(values = c(viridis_pal(option = "D")(length(unique(sites$site)))),
+                     labels = paste(sites$sitenum, sites$site)) +
+   guides(fill = guide_legend(override.aes = list(alpha = 0))) +
+   coord_sf(xlim = c(-115, -165), ylim = c(41, 66)) +
+   theme_minimal() +
+   theme(legend.position = "none", panel.grid = element_blank(),
+         panel.background = element_rect(fill = alpha("skyblue", 1/10)),
+         panel.border = element_rect(color = "black", fill = NA),
+         plot.margin = unit(c(0,0,0,0), "cm"),
+         axis.ticks = element_line(color = 'black')))
+
+ggsave("../plots/chinook_map_simple.tiff", dpi = 300,
        width = 6, height = 6, bg = 'white')
 

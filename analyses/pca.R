@@ -63,17 +63,19 @@ vcf_pca <- \(df, eigenval_file, title, legpos) {
                                   labels = levels(unique(df$site_full))) +
                 theme(legend.title = element_blank(),
                       legend.position = {{legpos}},
-                      legend.text = element_text(size = 12)) + 
+                      legend.text = element_text(size = 10)) + 
                 ggtitle({{title}}) +
-                guides(fill = guide_legend(ncol = 1, byrow = TRUE)) +
+                guides(fill = guide_legend(ncol = 2, byrow = TRUE)) +
                 labs(x = paste0("PC1 (", PC1, "%)"), 
                      y = paste0("PC2 (", PC2, "%)"))) 
   
   }
 
 # Visualize PCA for each "vcf-based" dataset. Add legend to first plot only.
-(hdg_f <- vcf_pca(df = hdgbs_full_pca, "../data/pca/hdgbs_full_original.eigenval", title = "hdGBS", legpos = "right"))
-(hdg_s <- vcf_pca(df = hdgbs_sub_pca,  "../data/pca/hdgbs_subset_original.eigenval", title = "hdGBS subset", legpos = "none"))
+(hdg_f <- vcf_pca(df = hdgbs_full_pca, "../data/pca/hdgbs_full_original.eigenval", title = "hdGBS", legpos = "right") +
+    scale_x_continuous(transform = "reverse") + scale_y_continuous(transform = "reverse"))
+(hdg_s <- vcf_pca(df = hdgbs_sub_pca,  "../data/pca/hdgbs_subset_original.eigenval", title = "hdGBS subset", legpos = "none") +
+    scale_x_continuous(transform = "reverse"))
 (lci_f <- vcf_pca(df = lcwgs_f.imputed, "../data/pca/lcWGS_full_8MSNPs_imputed.eigenval", title = "lcWGS imputed", legpos = "none"))
 (lci_s <- vcf_pca(df = lcwgs_s.imputed, "../data/pca/lcWGS_subset_imputed.eigenval", title = "lcWGS imputed subset", legpos = "none"))
 
@@ -127,7 +129,8 @@ lcwgs_pca <- \(cov_mat, bam_list, title) {
 
 (lcwgs_subs <- lcwgs_pca(cov_mat  = "../data/pca/angsd_subset134ksnps.cov",
                          bam_list = "../data/lcwgs_bam_list_n453.txt",
-                         title = "lcWGS"))
+                         title = "lcWGS subset") + 
+                         scale_x_continuous(transform = "reverse"))
 
 # First, extract the legend of one plot.
 pop_legend <- cowplot::get_legend(hdg_f)

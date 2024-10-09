@@ -2,7 +2,7 @@ Stock_Code,Reporting_Unit,Conservation_Unit,Population,Site,Province_State,Latit
 1000158,Lower Columbia River,LCR,ABERNATHY_RIVER,Abernathy,WA,46.1335,-123.0852,Ocean
 2191,South Thompson_SU_0.3,13,ADAMS_RIVER,Adams,BC,50.89386286,-119.5505675,Mixed
 1000365,Alaska_Lower Yukon River,AKYR-L,ANDREAFSKY_RIVER,Andreafsky,AK,62.068106,-163.111639,
-1000128,Middle Yukon River and tributaries,73,BIG_SALMON_RIVER,Big Salmon,YU,61.88110392,-134.9194263,
+1000128,Middle Yukon River and tributaries,73,BIG_SALMON_RIVER,BigSalmon,YU,61.88110392,-134.9194263,
 152,Lower Fraser River_SP_1.3,4,BIRKENHEAD_RIVER,Birkenhead,BC,50.30644079,-122.6070114,Stream
 1622,North Thompson_SP_1.3,18,BLUE_RIVER,Blue,BC,52.10461061,-119.2796415,Stream
 352,Middle Fraser River_SP_1.3,10,CARIBOO_RIVER-UPPER,Cariboo,BC,52.82540899,-121.2758869,
@@ -37,10 +37,10 @@ Stock_Code,Reporting_Unit,Conservation_Unit,Population,Site,Province_State,Latit
 2718,Southern Mainland-Southern Fjords_FA_0.x,28,PHILLIPS_RIVER,Phillips,BC,50.55498132,-125.3650199,
 249,Lower Fraser River-Upper Pitt_SU_1.3,5,PITT_RIVER-UPPER,Pitt,BC,49.56628595,-122.6343385,
 74,Middle Fraser River-Portage_FA_1.3,9,PORTAGE_CREEK,Portage,BC,50.70803014,-122.2700586,
-100,East Vancouver Island-Qualicum and Puntledge_FA_0.x,27,QUALICUM_RIVER,Big Qualicum,BC,49.39884025,-124.6091444,Ocean
+100,East Vancouver Island-Qualicum and Puntledge_FA_0.x,27,QUALICUM_RIVER,BigQualicum,BC,49.39884025,-124.6091444,Ocean
 45,North Thompson_SU_1.3,19,RAFT_RIVER,Raft,BC,51.63177174,-119.9911334,
-1000584,Salmon Fork,77,SALMON_FORK_RIVER,Salmon Fork,YU,66.54467486,-140.9996649,
-93,West Vancouver Island-South_FA_0.x,31,SAN_JUAN_RIVER,San Juan,BC,48.56008206,-124.3987958,Ocean
+1000584,Salmon Fork,77,SALMON_FORK_RIVER,SalmonFork,YU,66.54467486,-140.9996649,
+93,West Vancouver Island-South_FA_0.x,31,SAN_JUAN_RIVER,SanJuan,BC,48.56008206,-124.3987958,Ocean
 1388,West Vancouver Island-South_FA_0.x,31,SARITA_RIVER,Sarita,BC,48.8978855,-125.0090965,
 288,Boundary Bay_FA_0.3,2,SERPENTINE_RIVER,Serpentine,BC,49.08194793,-122.8529309,
 1000270,South Thompson_SU_1.3,14,SEYMOUR_RIVER,Seymour,BC,51.23862931,-118.9593268,

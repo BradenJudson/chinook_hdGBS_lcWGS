@@ -99,7 +99,7 @@ lcwgs_outliers <- \(zscores, positions, K) {
   positions <- read.table(positions, header = T) %>% 
     mutate(pos = as.numeric(gsub(".*\\.1\\_", "", marker)),
            chr = as.factor(gsub("\\.1\\_.*", "\\.1", marker))) %>% 
-    select(c(chr, pos))
+    dplyr::select(c(chr, pos))
 
   # Bind it all together and return.
   data <- cbind(positions, 
@@ -112,6 +112,8 @@ lcwgs_outliers <- \(zscores, positions, K) {
 
 lcwgs_full <- lcwgs_outliers("../data/fst/lcwgs_m15_maf005.pcadapt.zscores",
                              "../data/lcwgs_8MSNPs_positions.txt", K = 5)
+ 
+# write.csv(lcwgs_full, "../data/fst/lcwgs_pcadapt_scores_pvals.csv", row.names = F)
 
 (chr_out <- lcwgs_full[lcwgs_full$qval < 0.00001,] %>% 
     group_by(chr) %>% tally())
