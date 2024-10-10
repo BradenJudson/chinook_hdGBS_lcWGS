@@ -60,59 +60,60 @@ ggsave("../plots/offset_het.tiff", dpi = 300,
 
 # Visualize w/ map -------------------------------------------------------------
 
-
+# Shapefiles for land.
 USA <- sf::st_as_sf(geodata::gadm(country = "USA", level = 0, path = "../map/"))
 CAN <- sf::st_as_sf(geodata::gadm(country = "CAN", level = 1, path = "../map/"))
 
 hets <- cbind(loc[!loc$Site %in% c("Raft", "Harrison", "Nahatlatch"),], het)
 
+# Function for plotting offset/diversity metrics.
 offset_plot <- \(df, variable, midpoint, cgr_rev, plot_title) {
   
-  p1 <- ggplot(data = df) + theme_bw() + 
+  # For consistent label bins.
+  qs <- round(as.numeric(quantile(df[,deparse(substitute(variable))])), 2)
+  
+  # Plot land and populations on it.
+  p1 <- ggplot(data = df) + theme_bw() +                                    
     geom_sf(data = USA, fill = "gray90", linewidth = 1/10) +
     geom_sf(data = CAN, fill = "gray90", linewidth = 1/10) +
     coord_sf(xlim = c(-115, -165), ylim = c(41, 66)) +
     labs(x = NULL, y = NULL) +
     geom_point(aes(x = Longitude, 
                    y = Latitude, 
-                   fill = {{variable}}),
-               shape = 21, stroke = 1/10) +
+                   fill = {{variable}},   # Colour is metric of interest.
+                   size = {{variable}}),  # Point size is also proportional to value.
+               shape = 21, stroke = 1/10) + ggtitle(plot_title) + 
     theme(legend.background = element_rect(colour = 'black', fill = 'white'),
-          legend.position = "right", legend.title = element_blank()) +
-    scale_fill_gradient2(low  = "skyblue", 
-                         high = "red2", 
-                         midpoint = midpoint,
-                         guide = guide_colorbar(draw.ulim = TRUE, 
-                                                draw.llim = TRUE, 
-                                                reverse = cgr_rev,
-                                                ticks   = TRUE,
-                                                frame.colour = 'black',
-                                                ticks.color  = 'black')) +
-    ggtitle(plot_title)
-  
-  p1_leg <- as_ggplot(cowplot::get_legend(p1))
-  
-  p2 <- p1 + theme(legend.position = "none") +
-      geom_point(aes(x = Longitude, 
-                     y = Latitude, 
-                     fill = {{variable}},
-                     size = {{variable}}),
-                 shape = 21)
+          legend.position = "right", legend.title = element_blank(),
+          legend.justification = "top") +
+    scale_fill_gradient2(low  = if(cgr_rev == FALSE) "skyblue" else "red2", 
+                         high = if(cgr_rev == FALSE) "red2" else "skyblue", 
+                         midpoint = qs[[3]], breaks = qs, 
+                         limits = c(min(qs), max(qs))) +
+    scale_size_continuous(range = c(1,5), breaks = c(qs),
+                          limits = c(min(qs), max(qs))) +
+    guides(fill = guide_legend(), size = guide_legend()) 
+    # Above ensures size and fill legends are combined.
 
-
+   # Extract legend from plot and remove margins.  
+   p1_leg <- as_ggplot(cowplot::get_legend(p1)) +
+    theme(plot.margin = unit(c(0,0,0,0), "points"))
+  
+  # Remove legend from main plot.
+  p2 <- p1 + theme(legend.position = "none")
+  
+  # Use custom function to inset legend inside figure.
   ConGenFunctions::insettr(p2, p1_leg,
                            location = "tr",
                            height = 0.3,
                            width = 0.1)
-  
-  
-  
+   
 }
 
 (off85 <- offset_plot(data, variable = offset85, 
                       midpoint = mean(data$offset85), 
                       cgr_rev = FALSE,
-                      plot_title = "Genomic offset (ssp85)") )
+                      plot_title = "Genomic offset (ssp85)"))
 ggsave("../plots/genomic_offset85.tiff", bg = 'white',
        dpi = 300, width = 8, height = 6)
 
@@ -121,16 +122,15 @@ ggsave("../plots/genomic_offset85.tiff", bg = 'white',
                       cgr_rev = FALSE,
                       plot_title = "Genomic offset (ssp26)"))
 ggsave("../plots/genomic_offset26.tiff", bg = 'white',
-       dpi = 300, width = 8, height = 8)
+       dpi = 300, width = 8, height = 6)
 
-# https://ggplot2.tidyverse.org/reference/guide_colourbar.html
 (hetpl <- offset_plot(hets, 
                       variable = indv_het_mean, 
                       midpoint = 0.24, 
                       cgr_rev = TRUE,
                       plot_title = "Average individual heterozygosity"))
 ggsave("../plots/indv_heterozygosity.tiff", bg = 'white',
-       dpi = 300, width = 8, height = 8)
+       dpi = 300, width = 8, height = 6)
 
 cowplot::plot_grid(plotlist = list(off85, hetpl), ncol = 2)
 ggsave("../plots/offset_het.tiff", width = 14, height = 8, dpi = 300)
