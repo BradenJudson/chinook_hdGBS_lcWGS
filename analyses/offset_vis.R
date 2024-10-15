@@ -1,6 +1,6 @@
 setwd("~/ots_landscape_genetics/analyses")
 
-library(tidyverse); library(sf); library(vcfR); library(ggpmisc)
+library(tidyverse); library(sf); library(vcfR); library(ggpmisc); library(ggpmisc)
 library(cowplot); library(viridis); library(ggpubr); library(ConGenFunctions)
 
 # Data for each location and coordinates.
@@ -47,9 +47,8 @@ hetoff <- cbind(het, off85)[,2:7] %>%
   guides(fill = guide_legend(ncol = 2, byrow = TRUE)) +
   theme(legend.title = element_blank()))
 
-ggsave("../plots/offset_het.tiff", dpi = 300,
+ggsave("../plots/offset_het_lm.tiff", dpi = 300,
        width = 11, height = 8, bg = 'white')
-  
 
 # Visualize w/ map -------------------------------------------------------------
 
@@ -143,11 +142,61 @@ ggsave("../plots/offset_het.tiff", width = 14, height = 8, dpi = 300)
 # Plot offset values for best/worst case scenarios.
 cowplot::plot_grid(plotlist = list(offset_plot(data, variable = offset26, 
                                                cgr_rev = FALSE, abs_cols = T, brks = 6,
-                                               plot_title = "Genomic offset (ssp26)")[[1]], 
+                                               plot_title = "Genomic offset (ssp26)"), 
                                    offset_plot(data, variable = offset85, 
                                                cgr_rev = FALSE, abs_cols = T, brks = 6,
                                                plot_title = "Genomic offset (ssp85)")),
-                                   ncol = 2)
+                                   ncol = 2, align = "vh")
 
 ggsave("../plots/offset_26_85.tiff", width = 14, height = 8, dpi = 300)
+
+
+# Bioclim ----------------------------------------------------------------------
+
+bioclim <- read.csv("../data/ch_bioclim.csv") %>% 
+  mutate(data = case_when(is.na(ssp) ~ "Present",
+                          ssp == 85  ~ "ssp85",
+                          ssp == 26  ~ "ssp26")) %>% 
+  select(c("Site", "bio1", "bio5", "bio15", "data")) %>% 
+  filter(!Site %in% c("Harrison", "Nahatlatch", "Raft"))
+
+future  <- bioclim[bioclim$data == "ssp85",]   %>% select(starts_with("bio"))
+present <- bioclim[bioclim$data == "Present",] %>% select(starts_with("bio"))
+delta   <- cbind(bioclim[bioclim$data == "ssp85", "Site"], 
+                 data.frame(c(future-present))) %>% 
+                 rename("population" = 1) %>% 
+                 mutate(population = gsub(" ", "", population)) %>% 
+  merge(., loc, by.x = "population", by.y = "Site") 
+
+offset <- data[,c(1:3)] %>% merge(., delta, by = "population") %>% 
+  pivot_longer(cols = c("offset85", "offset26"), names_to = "offset", values_to = "offset_vals") %>% 
+  pivot_longer(cols = starts_with("bio"), names_to = "biovar", values_to = "bioclim")
+
+clab <- c(bio1 = "Annual mean temperature (bio1)",
+          bio5 = "Max temperature of the warmest month (bio5)",
+          bio15 = "Precipitation seasonality (bio15)",
+          offset26 = "Genomic offset (ssp26)",
+          offset85 = "Genomic offset (ssp85)")
+
+(off_env_lms <- ggplot(data = offset,
+       aes(x = bioclim, y = offset_vals)) +
+  geom_smooth(aes(x = bioclim, y = offset_vals),
+              method = "lm", colour = "black") +  theme_bw() +
+  geom_point(shape = 21, aes(fill = as.factor(Latitude)),
+             size = 2.5) + 
+  facet_grid(offset ~ biovar, 
+             scales = "free", labeller = as_labeller(clab)) +
+  scale_fill_manual(values = c(viridis_pal(option = "D")(length(unique(offset$population))))) +
+  labs(y = "Offset value",
+       x = "Environmental change (Future - Present)") +
+  stat_poly_eq(use_label(c("R2", "p")),
+               label.x = "left",
+               label.y = "top") +
+  scale_y_continuous(expand = expansion(mult = c(1/50, 1/10))) +
+  theme(legend.position = "none"))
+
+ggsave("../plots/offset_env_var.tiff", dpi = 300,
+       width = 10, height = 7)
+
+
 
