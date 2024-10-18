@@ -6,7 +6,7 @@ library(tidyverse); library(ggplot2); library(vcfR)
 # Also see McKinney et al., 2017 (DOI: 10.1111/1755-0998.12613).
 source("./HDplot/HDplot.R")
 
-input <- read.vcfR("../data/snps_maf001.vcf")
+input <- read.vcfR("../data/snps_maf005.vcf.gz")
 
 # Tresholds in Chinook described in McKinney et al., 2017.
 Hmax <- 0.6
@@ -43,4 +43,4 @@ write.table(HDplotResults[HDplotResults$SNP == "Duplicate", c("CHROM", "POS")] %
             row.names = F, col.names = F)
 
 # Filter using above.
-system("plink.exe --vcf ../data/snps_maf001.vcf --aec --exclude range ./stats/duplicateSNP_IDs.txt --recode vcf --out ../data/snps_maf001_singletons")
+system("plink.exe --vcf ../data/snps_maf005.vcf.gz --aec --exclude range ./stats/duplicateSNP_IDs.txt --recode vcf --out ../data/vcfs/hdgbs_full_maf5_original_singletons")

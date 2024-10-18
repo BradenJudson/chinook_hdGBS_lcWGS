@@ -19,10 +19,9 @@ source ~/.profile
 
 populations -P "$STACKS_FOLDER" \
         -M "$INFO_FILES_FOLDER"/"$POP_MAP" \
-        -t "$NUM_CPU" -p 2 -r 0.6 -R 0.6 \
+        -t "$NUM_CPU" -p 2 -r 0.7 -R 0.7 \
         --ordered-export \
-        --write-random-snp \
         --fasta-loci \
         --vcf \
         --plink \
-        -O 08_populations_nopcrdedup_rSNP_m60
+        -O 08_populations_nopcrdedup_m70
