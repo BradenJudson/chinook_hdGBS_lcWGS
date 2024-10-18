@@ -7,6 +7,8 @@ conda activate ../../hdgbs_env
 
 cp ../08_populations_nopcrdedup_rSNP_m60/populations.snps.vcf populations.snps.vcf
 
+python extract_snp_with_max_maf.py "$FDIR"/unfiltered_populations.snps.vcf "$FDIR"/"$VCF1"
+
 VCF1="populations.snps.vcf"
 
 # Remove low quality genotypes.
@@ -25,10 +27,12 @@ bcftools stats filtered_indvs_m60.vcf.gz > filtered_indvs_m60.txt
 vcftools --gzvcf filtered_indvs_m60.vcf.gz --min-meanDP 3 --max-meanDP 100 --recode --stdout | gzip -c > snps_coverage_m60.vcf.gz
 bcftools stats snps_coverage_m60.vcf.gz > snps_coverage_m60.txt
 
-# Remove loci not present in 60% of individuals globally.
-vcftools --gzvcf snps_coverage_m60.vcf.gz --max-missing 0.4  --recode --stdout | gzip -c > max60missing_m60.vcf.gz
-bcftools stats max60missing_m60.vcf.gz > max60missing_m60.txt
+# Remove loci not present in 70% of individuals globally.
+vcftools --gzvcf snps_coverage_m60.vcf.gz --max-missing 0.3  --recode --stdout | gzip -c > max70missing_m60.vcf.gz
+bcftools stats max70missing_m60.vcf.gz > max70missing_m60.txt
 
 # Remove loci with MAF < 5%.
-vcftools --gzvcf max60missing_m60.vcf.gz --maf 0.02 --recode --stdout | gzip -c > snps_maf2_m60.vcf.gz
-bcftools stats snps_maf2_m60.vcf.gz > snps_maf2_m60.txt
+vcftools --gzvcf max70missing_m60.vcf.gz --maf 0.01 --recode --stdout | gzip -c > snps_maf1_m60.vcf.gz
+bcftools stats snps_maf1_m60.vcf.gz > snps_maf1_m60.txt
+
+# Next use HDPLot in R for removing paralogs and implementing a MAF cutoff of 5%.
