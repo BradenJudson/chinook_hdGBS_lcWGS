@@ -97,8 +97,6 @@ tr1 <- readRDS("waterway_transition_matrix_5k.rds")
 # Read in site information.
 sites <- read.delim("../data/ch2023_sequenced_adj.txt", sep = "\t")
 
-
-
 # Convert sites to an object of class SpatialPointsDataFrame.
 sitepoints <- SpatialPoints(coords = sites[,c("Longitude", "Latitude")],
                             proj4string = CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
@@ -218,13 +216,13 @@ ggplot(NULL) +
   geom_point(data = cd, aes(x = Longitude, y = Latitude, fill = value),
              shape = 21, size = 2, colour = "black") +
   scale_fill_continuous(high = "navy", low = "lightskyblue1") +
-  scale_y_continuous(limits = c(40, 66), expand = c(0,0)) +
-  scale_x_continuous(expand = c(0,0)) + coord_sf() +
   theme_bw() + theme(panel.grid = element_blank(),
                      legend.position = "none") +
   labs(x = "Longitude", y = "Latitude") +
   facet_wrap(~name, ncol = 1) +
-  coord_sf()
+  coord_sf(ylim   = c(40, 68),
+           xlim   = c(-115, -165),
+           expand = 0)
 
 ggsave("../plots/optimalPCNMs.tiff", width = 8, height = 12, dpi = 300)
 

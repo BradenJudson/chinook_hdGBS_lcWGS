@@ -67,7 +67,7 @@ vcf_pca <- \(df, eigenval_file, title, legpos) {
                       legend.position = {{legpos}},
                       legend.text = element_text(size = 10)) + 
                 ggtitle({{title}}) +
-                guides(fill = guide_legend(ncol = 2, byrow = TRUE)) +
+                guides(fill = guide_legend(ncol = 1, byrow = TRUE)) +
                 labs(x = paste0("PC1 (", PC1, "%)"), 
                      y = paste0("PC2 (", PC2, "%)"))) 
   
@@ -116,7 +116,7 @@ lcwgs_pca <- \(cov_mat, bam_list, title) {
                             fill  = factor(Latitude))) +
       geom_point(shape = 21) + theme_bw() +
       scale_fill_manual(values = c(viridis_pal(option = "D")(length(unique(pca_dat$site_full))))) +
-      guides(fill = guide_legend(ncol = 2, byrow = TRUE)) +
+      guides(fill = guide_legend(ncol = 1, byrow = TRUE)) +
       theme(legend.title = element_blank(),
             legend.position = "none") +
       labs(x = paste0("PC1 (", PC1, "%)"), 
