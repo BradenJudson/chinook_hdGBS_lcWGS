@@ -40,8 +40,6 @@ format_eigenvec <- \(eigenvec_file) {
 }
 
 # Obtain and organize PCA information for each dataset.
-
-
 hdgbs_full_pca  <- format_eigenvec("../data/pca/hdgbs_full_original.eigenvec")
 hdgbs_sub_pca   <- format_eigenvec("../data/pca/hdgbs_subset_original.eigenvec")
 lcwgs_s.imputed <- format_eigenvec("../data/pca/lcWGS_full_8MSNPs_imputed.eigenvec")
@@ -74,7 +72,8 @@ vcf_pca <- \(df, eigenval_file, title, legpos) {
   }
 
 # Visualize PCA for each "vcf-based" dataset. Add legend to first plot only.
-(hdg_f <- vcf_pca(df = hdgbs_full_pca, "../data/pca/hdgbs_full_original.eigenval", title = "hdGBS", legpos = "right") +
+(hdg_f <- vcf_pca(df = hdgbs_full_pca[hdgbs_full_pca$site_full == "Imnaha",], 
+                  "../data/pca/hdgbs_full_original.eigenval", title = "hdGBS", legpos = "right") +
     scale_x_continuous(transform = "reverse") +  scale_y_continuous(transform = "reverse"))
 (hdg_s <- vcf_pca(df = hdgbs_sub_pca,  "../data/pca/hdgbs_subset_original.eigenval", title = "hdGBS subset", legpos = "none") +
     scale_x_continuous(transform = "reverse"))

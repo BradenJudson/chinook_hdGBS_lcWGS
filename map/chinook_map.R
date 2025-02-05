@@ -136,16 +136,20 @@ ggsave("../plots/map_winset.tiff", dpi = 300,
 
 library(viridis)
 
+sites50 <- sites %>% filter(!site %in% c("Trinity", "Yeth", "Blue", "Klinaklini",
+                                         "Adams", "Sarita", "Siuslaw")) 
+
+
 (chmap <- ggplot() +
    geom_sf(data = USA, fill = "gray90", linewidth = 1/10) +
    geom_sf(data = bcn, fill = "gray90", linewidth = 1/10) +
    geom_sf(data = bch, fill = "gray90", linewidth = 1/10) +
    geom_sf(data = rivers3,   colour = "skyblue",  linewidth = 1/4) +
-   geom_point(data = sites, size = 2.5, stroke = 1/3,
+   geom_point(data = sites50, size = 2.5, stroke = 1/3,
               shape = 21, color = "black",
               aes(x = Longitude, y = Latitude, fill = as.factor(Latitude))) +
-   scale_fill_manual(values = c(viridis_pal(option = "D")(length(unique(sites$site)))),
-                     labels = paste(sites$sitenum, sites$site)) +
+   scale_fill_manual(values = c(viridis_pal(option = "D")(length(unique(sites50$site)))),
+                     labels = paste(sites50$sitenum, sites$site)) +
    guides(fill = guide_legend(override.aes = list(alpha = 0))) +
    coord_sf(xlim = c(-115, -165), ylim = c(41, 66)) +
    theme_minimal() +
@@ -155,6 +159,6 @@ library(viridis)
          plot.margin = unit(c(0,0,0,0), "cm"),
          axis.ticks = element_line(color = 'black')))
 
-ggsave("../plots/chinook_map_simple.tiff", dpi = 300,
+ggsave("../plots/chinook_map_simple_n50.tiff", dpi = 300,
        width = 6, height = 6, bg = 'white')
 

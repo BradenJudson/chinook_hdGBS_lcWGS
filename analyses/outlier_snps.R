@@ -5,7 +5,7 @@ library(cowplot); library(bigutilsr)
 
 # Function for converting VCF to bed (usable by pcadapt).
 # Assumes VCF is gzipped.
-vcf2pc <- \(vcf_file) system(paste0("plink.exe --vcf", vcf_file, 
+vcf2pc <- \(vcf_file) system(paste("plink.exe --vcf", vcf_file, 
                            " --make-bed --aec --double-id --out", 
                            gsub("\\.vcf.gz", "", vcf_file)))
 
@@ -14,7 +14,7 @@ vcf2pc("../data/vcfs/hdgbs_subset_134kSNPs_n362_imputed.vcf.gz")
 vcf2pc("../data/vcfs/hdgbs_full_maf5_m15_original.vcf.gz")
 vcf2pc("../data/vcfs/lcwgs_subset_134kSNPs_imputed.vcf.gz")
 
-# Function for ocnducting pcadapt analyses.
+# Function for conducting pcadapt analyses.
 pcadapt2 <- \(vcf, K, q.alpha) {
  
   # Read in bed file.
@@ -115,8 +115,7 @@ lcwgs_full <- lcwgs_outliers("../data/fst/lcwgs_m15_maf005.pcadapt.zscores",
  
 # write.csv(lcwgs_full, "../data/fst/lcwgs_pcadapt_scores_pvals.csv", row.names = F)
 
-(chr_out <- lcwgs_full[lcwgs_full$qval < 0.00001,] %>% 
-    group_by(chr) %>% tally())
+lcwgs_full <- read.csv("../data/fst/lcwgs_pcadapt_scores_pvals.csv")
 
 (ots28_full <- ggplot(data = lcwgs_full %>% 
        filter(chr == "NC_056456.1"),
@@ -132,5 +131,59 @@ lcwgs_full <- lcwgs_outliers("../data/fst/lcwgs_m15_maf005.pcadapt.zscores",
   labs(x = "Position (Mbp)",
        y = expression(-log[10](p-value)))) 
 
+
+manh_ins <- \(df, x) { 
+  
+  main <- ggplot(df, 
+                 aes(x = {{x}}/1e6,
+                     y = -log10(pval))) +
+    geom_point() + theme_classic() +
+    labs(x = "Position (Mbp)",
+       y = expression(-log[10](p-value)))
+
+  ymax <- max(-log10(df$pval), na.rm = TRUE)
+
+  mag <- main + coord_cartesian(clip = "off") +
+    theme(plot.margin = ggplot2::margin(10,100,10,10)) +
+    geom_magnify(from = c(12,13,0,ymax),
+                 to   = c(48,56,0,ymax))
+
+}
+
+(lcwgs <- manh_ins(df = lcwgs_full[lcwgs_full$chr == "NC_056456.1",], x = pos))
+(hdgbs <- manh_ins(df = hdgbs_imp[hdgbs_imp$CHROM == "NC_056456.1",], x = POS))
+
+(stack <- cowplot::plot_grid(plotlist = list(lcwgs, hdgbs),
+                             nrow = 2, align = "VH"))
+
+cowplot::save_plot(plot = stack, base_width = 8, base_height = 6,
+                   filename = "../plots/stacked_manhattans.png")
+
+# 
+# 
+# 
+# 
+# j <- ots28_full +
+#   coord_cartesian(clip = 'off') +
+#   theme(plot.margin = ggplot2::margin(10,80,10,10)) +
+#   geom_magnify(from = c(37,39,0,75),
+#                to   = c(48,56,0,75))
+# 
+# h <- ggplot(data = hdgbs_imp[hdgbs_imp$CHROM == "NC_056456.1",],
+#        aes(x = POS/1e6, y = -log10(pval))) +
+#   geom_point() +  theme_classic()
+# 
+# (h2 <- h +
+#     coord_cartesian(clip = 'off', xlim = c(0, 40)) +
+#     geom_magnify(from = c(37,39,0,18),
+#                  to   = c(48,56,0,18)))
+# 
+# 
+# 
+# cowplot::plot_grid(plotlist = list(j,h2),
+#                    ncol = 1, nrow = 2)
+# 
+# ggsave("../plots/stacked_manhattans.tiff", dpi = 300,
+#        width = 12, height = 8)
 
 

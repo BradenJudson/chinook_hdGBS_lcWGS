@@ -141,6 +141,21 @@ freqs <- merge(hd_afs, lc_afs, by = c("CHROM", "POS")) %>%
 
 write.csv(freqs, "./data/allele_frequencies.csv", row.names = F)
 
+freqs <- read.csv("./data/allele_frequencies.csv")[1:20000,]
+
+library(ggpointdensity)
+
+ggplot(data = freqs, aes(x = AFhd, y = AFlc)) +
+  geom_pointdensity() +
+  scale_colour_continuous(low = "gray80", high = "gray20") +
+  theme_bw() +
+  scale_x_continuous(breaks = seq(0,1,0.25)) +
+  scale_y_continuous(breaks = seq(0,1,0.25)) +
+  theme(legend.position = "none") +
+  geom_smooth(method = "lm", se = FALSE, colour = "black")
+
+
+
 (lcimp_hdgbs.lm <- ggplot(data = freqs, aes(x = AFhd, y = AFlc)) + 
   geom_point(alpha = 1/4) + theme_bw() + 
   labs(x = "hdGBS major allele frequency",

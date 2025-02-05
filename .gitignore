@@ -21,6 +21,7 @@ data/hdgbs_snps_maf2_m60.snmf/
 data/vcf_maf005.Imiss
 comp/ref_mismatch.csv
 **.xlsx
+data/pop_map_n361.txt
 data/hdgbs_sub_pcascores.csv
 analyses/positions.txt
 data/vcfs/
@@ -91,3 +92,6 @@ data/ch_bioclim.csv
 pop_gen/hdgbs_gds
 data/lcwgs_8MSNPs_positions.txt
 202425_pop_name_recs.txt
+data/*n361.csv
+data/*n361_hdgbs.txt
+analyses/*keep
