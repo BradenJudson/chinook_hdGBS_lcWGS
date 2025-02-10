@@ -14,7 +14,7 @@ setwd("~/ots_landscape_genetics/map")
 
 library(ggplot2); library(tidyverse); library(raster); library(sf)
 library(bcmaps); library(ggspatial); library(sp); library(geodata)
-library(ggrepel); library(rnaturalearth); library(cowplot)
+library(ggrepel); library(rnaturalearth); library(cowplot); library(viridis)
 
 # Custom "not in" operator.
 "%ni%" <- Negate("%in%")
@@ -30,16 +30,21 @@ bcn <- prov[prov$NAME_1 %in% c("Alberta", "Yukon", "Northwest Territories", "Nun
 # Necessary due to complexity of coastline.
 bch <- st_transform(bc_bound_hres(), crs = 4326)
 
-# Read in site information and reformat labels.
-sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>%
-  mutate(site = tools::toTitleCase(tolower(gsub("\\_.*", "", Population)))) %>% 
-  filter(!site %in% c("Harrison", "Raft", "Nahatlatch")) %>% 
+sites <- read.csv("../data/ch2023_n361.csv") %>% 
   arrange(Latitude) %>% 
   mutate(sitenum = as.numeric(rownames(.))) 
 
-sites[sites$Population == "SAN_JUAN_RIVER", "site"] <- "San Juan"
-sites[sites$Population == "BIG_SALMON_RIVER", "site"] <- "Big Salmon"
-sites[sites$Population == "SALMON_FORK_RIVER", "site"] <- "Salmon Fork"
+
+# # Read in site information and reformat labels.
+# sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>%
+#   mutate(site = tools::toTitleCase(tolower(gsub("\\_.*", "", Population)))) %>% 
+#   filter(!site %in% c("Harrison", "Raft", "Nahatlatch")) %>% 
+#   arrange(Latitude) %>% 
+#   mutate(sitenum = as.numeric(rownames(.))) 
+# 
+# sites[sites$Population == "SAN_JUAN_RIVER", "site"] <- "SanJuan"
+# sites[sites$Population == "BIG_SALMON_RIVER", "site"] <- "BigSalmon"
+# sites[sites$Population == "SALMON_FORK_RIVER", "site"] <- "SalmonFork"
 
 # To make computations faster, only use data from focal area.
 bound <- c(ymin = 35, ymax = 70, xmin = -170, xmax = -105)
@@ -83,8 +88,8 @@ rivers3 <- st_transform(sf::st_simplify(rivers[rivers$ORD_STRA >  3,]), crs = 43
           plot.margin = unit(c(0,0,0,0), "cm")) +
     geom_rect(aes(ymin = 40.01, ymax = 55.2, xmax = -153, xmin = -167.25),
               colour = "black", fill = "white", alpha = 1/6, linewidth = 1/20, inherit.aes = FALSE) +
-    annotate("text", x = -167, y = yv, label = c(paste(sites[sites$sitenum <= 29, "sitenum"], ". ", sites[sites$sitenum <= 29, "site"])), size = 2, hjust = 0) +
-    annotate("text", x = -160, y = yv[1:28], label = c(paste(sites[sites$sitenum >  29, "sitenum"], ". ", sites[sites$sitenum >  29, "site"])), size = 2, hjust = 0))
+    annotate("text", x = -167, y = yv, label = c(paste(sites[sites$sitenum <= 25, "sitenum"], ". ", sites[sites$sitenum <= 25, "site"])), size = 2, hjust = 0) +
+    annotate("text", x = -160, y = yv, label = c(paste(sites[sites$sitenum >  25, "sitenum"], ". ", sites[sites$sitenum >  25, "site"])), size = 2, hjust = 0))
 
 # Inset ------------------------------------------------------------------------
 
@@ -127,29 +132,23 @@ ggdraw(plot = pnw) +
   width = 0.2,
   height = 0.5)
 
-ggsave("../plots/map_winset.tiff", dpi = 300, 
+ggsave("../plots/map_winset_50pops.tiff", dpi = 300, 
        width = 6, height = 6, bg = 'white')
 
 
 
 # Simplified PPT version -------------------------------------------------------
 
-library(viridis)
-
-sites50 <- sites %>% filter(!site %in% c("Trinity", "Yeth", "Blue", "Klinaklini",
-                                         "Adams", "Sarita", "Siuslaw")) 
-
-
 (chmap <- ggplot() +
    geom_sf(data = USA, fill = "gray90", linewidth = 1/10) +
    geom_sf(data = bcn, fill = "gray90", linewidth = 1/10) +
    geom_sf(data = bch, fill = "gray90", linewidth = 1/10) +
    geom_sf(data = rivers3,   colour = "skyblue",  linewidth = 1/4) +
-   geom_point(data = sites50, size = 2.5, stroke = 1/3,
+   geom_point(data = sites, size = 2.5, stroke = 1/3,
               shape = 21, color = "black",
               aes(x = Longitude, y = Latitude, fill = as.factor(Latitude))) +
-   scale_fill_manual(values = c(viridis_pal(option = "D")(length(unique(sites50$site)))),
-                     labels = paste(sites50$sitenum, sites$site)) +
+   scale_fill_manual(values = c(viridis_pal(option = "D")(length(unique(sites$site)))),
+                     labels = paste(sites$sitenum, sites$site)) +
    guides(fill = guide_legend(override.aes = list(alpha = 0))) +
    coord_sf(xlim = c(-115, -165), ylim = c(41, 66)) +
    theme_minimal() +

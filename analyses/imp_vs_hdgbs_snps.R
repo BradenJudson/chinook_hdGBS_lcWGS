@@ -80,13 +80,14 @@ fwlabs <- c('acc_match' = "Percentage of matching genotypes",
 (alLF <- mismatches[,c("sample", "acc_match", "acc_m1", "acc_m2")] %>% 
   pivot_longer(cols = c("acc_match", "acc_m1", "acc_m2")) %>% 
     mutate(name = factor(name, levels = c("acc_match", "acc_m1", "acc_m2"))) %>% 
-  ggplot(aes(x = name, y = value/100)) + geom_boxplot(outlier.alpha = 0) +
-    geom_jitter(width = 1/8, shape = 21,
-                colour = "black", fill = "grey25", 
-                alpha = 1/4) + theme_bw() +
+  ggplot(aes(x = name, y = value/100)) + geom_boxplot(outlier.alpha = 0.5) +
+    # geom_jitter(width = 1/8, shape = 21,
+    #             colour = "black", fill = "grey25", 
+    #             alpha = 1/4) + 
+    theme_bw() +
     facet_wrap(. ~ name, scales = "free", labeller = as_labeller(fwlabs)) +
     labs(x = NULL, y = NULL) + 
-    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    scale_y_continuous(labels = \(x) sprintf("%.1f", x*100)) +
     theme(axis.text.x = element_blank(),
           axis.ticks.x = element_blank()))
 ggsave("../plots/imp_accuracy2.tiff", dpi = 300, width = 10, height = 6)

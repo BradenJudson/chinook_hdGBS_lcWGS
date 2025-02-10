@@ -1,6 +1,6 @@
 setwd("~/ots_landscape_genetics/analyses")
 
-library(tidyverse)
+library(tidyverse); library(pophelper)
 
 qvals <- \(directory) {
  
@@ -22,8 +22,9 @@ qvals <- \(directory) {
 # Read in lcWGS subset admixture data.
 lcwgs_134k <- qvals(directory = "../data/admixture/lcWGS_134ksubset/")
 
+
 (lc134 <- plotQ(as.qlist(lcwgs_134k[c(8,5)]), returnplot = T, 
-          exportplot = F, clustercol = shiny, sortind = "all",
+          exportplot = F, sortind = "all",
           imgoutput = "join", sharedindlab = F,
           splab = paste0("K = ", sapply(lcwgs_134k[c(8,5)], ncol)),
           basesize = 22, showindlab = T, ordergrp = T))

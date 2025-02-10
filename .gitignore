@@ -4,6 +4,7 @@
 .Ruserdata
 *.vcf
 *.vcf.gz
+data/*.sites
 *.tiff
 data/pca/
 writing/
@@ -98,3 +99,4 @@ data/lcwgs_8MSNPs_positions.txt
 data/*n361.csv
 data/*n361_hdgbs.txt
 analyses/*keep
+data/chinook_lcwgs_maf1_m15_n361_snps.txt
