@@ -18,7 +18,7 @@ sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>%
 system("plink.exe --vcf ../data/vcfs/hdgbs_full_maf5_original_singletons.vcf  --aec --pca 1000 --out ../data/pca/hdgbs_full_original")
 system("plink.exe --vcf ../data/vcfs/lcWGS_full_8MSNPs_imputed.vcf.gz --double-id --aec --pca 1000 --out ../data/pca/lcWGS_full_8MSNPs_imputed")
 system("plink.exe --vcf ../data/vcfs/hdgbs_subset_134kSNPs_n362_original.vcf.gz --double-id --aec --pca 1000 --out ../data/pca/hdgbs_subset_original")
-system("plink.exe --vcf ../data/vcfs/lcwgs_subset_134kSNPs_imputed.vcf.gz --double-id --aec --pca 1000 --out ../data/pca/lcWGS_subset_imputed")
+system("plink.exe --vcf ../data/vcfs/chinook_lcwgs_maf1_m15_n361_imputed.vcf.gz --double-id --aec --pca 1000 --out ../data/pca/lcWGS_subset_imputed")
 
 # Format PCA output data from above.
 format_eigenvec <- \(eigenvec_file) {

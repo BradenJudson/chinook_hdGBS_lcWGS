@@ -1,7 +1,7 @@
 setwd("~/ots_landscape_genetics/analyses")
 
 library(tidyverse); library(pcadapt); library(qvalue); 
-library(cowplot); library(bigutilsr)
+library(cowplot); library(bigutilsr); library(ggmagnify)
 
 # Function for converting VCF to bed (usable by pcadapt).
 # Assumes VCF is gzipped.
@@ -12,7 +12,7 @@ vcf2pc <- \(vcf_file) system(paste("plink.exe --vcf", vcf_file,
 # Make bed files.
 vcf2pc("../data/vcfs/hdgbs_subset_134kSNPs_n362_imputed.vcf.gz")
 vcf2pc("../data/vcfs/hdgbs_full_maf5_m15_original.vcf.gz")
-vcf2pc("../data/vcfs/lcwgs_subset_134kSNPs_imputed.vcf.gz")
+vcf2pc("../data/vcfs/chinook_lcwgs_maf1_m15_n361_imputed.vcf.gz")
 
 # Function for conducting pcadapt analyses.
 pcadapt2 <- \(vcf, K, q.alpha) {
@@ -20,7 +20,7 @@ pcadapt2 <- \(vcf, K, q.alpha) {
   # Read in bed file.
   input <- read.pcadapt(gsub("\\.vcf.gz", "\\.bed", vcf), type = "bed")
   # Conduct PCadapt analysis.
-  x <- pcadapt(input = input, K = K)
+  x <- pcadapt(input = input, K = K, min.maf = 0.01)
   # Output screeplot for determining best K value.
   plot(x, option = 'screeplot')
   
@@ -44,7 +44,8 @@ pcadapt2 <- \(vcf, K, q.alpha) {
 # Conduct pcadapt with specified parameters. Returns dataframe of all SNPs and their outlier scores/status.
 hdgbs_imp <- pcadapt2("../data/vcfs/hdgbs_subset_134kSNPs_n362_original.vcf.gz", K = 5, q.alpha = 1/100)
 hdgbs_ori <- pcadapt2("../data/vcfs/hdgbs_full_maf5_m15_original.vcf.gz", K = 5, q.alpha = 1/100)
-lcwgs_imp <- pcadapt2("../data/vcfs/lcwgs_subset_134kSNPs_imputed.vcf.gz", K = 5, q.alpha = 1/100)
+lcwgs_imp <- pcadapt2("../data/vcfs/chinook_lcwgs_maf1_m15_n361_imputed_pruned.vcf.gz", K = 5, q.alpha = 1/100)
+lcwgs_imp2 <- pcadapt2("../data/vcfs/chinook_lcwgs_maf1_m15_n361_imputed.vcf.gz", K = 5, q.alpha = 1/100)
 
 # For better plotting, read in chromosome info.
 chrs <- read.delim("../data/otsh_sequence_report.tsv") %>% 
@@ -96,61 +97,67 @@ lcwgs_outliers <- \(zscores, positions, K) {
   qval <- qvalue(pval)$qvalues
   
   # Genomic positions for each locus.
-  positions <- read.table(positions, header = T) %>% 
-    mutate(pos = as.numeric(gsub(".*\\.1\\_", "", marker)),
-           chr = as.factor(gsub("\\.1\\_.*", "\\.1", marker))) %>% 
-    dplyr::select(c(chr, pos))
+  # positions <- read.table(positions, header = T) %>% 
+  #   mutate(pos = as.numeric(gsub(".*\\.1\\_", "", marker)),
+  #          chr = as.factor(gsub("\\.1\\_.*", "\\.1", marker))) %>% 
+  #   dplyr::select(c(chr, pos))
+  
+  positions <- read_tsv(positions, col_names = c("chr", "pos"))
+  
+  # # Bind it all together and return.
+  # data <- cbind(positions, 
+  #               data.frame(
+  #                 stat = dist, 
+  #                 pval = pval,
+  #                 qval = qval)
+  # )
 
-  # Bind it all together and return.
-  data <- cbind(positions, 
-                data.frame(
-                  stat = dist, 
-                  pval = pval,
-                  qval = qval)
-  )
 }
 
 lcwgs_full <- lcwgs_outliers("../data/fst/lcwgs_m15_maf005.pcadapt.zscores",
                              "../data/lcwgs_8MSNPs_positions.txt", K = 5)
+
+lcwgs_full_n361 <- lcwgs_outliers("../data/fst/pcadapt_n361_lcwgs_pcadapt_wSites.pcadapt.zscores",
+                                  "../data/lcwgs_ldpruned_sites.txt", K=5)
  
 # write.csv(lcwgs_full, "../data/fst/lcwgs_pcadapt_scores_pvals.csv", row.names = F)
 
 lcwgs_full <- read.csv("../data/fst/lcwgs_pcadapt_scores_pvals.csv")
-
-(ots28_full <- ggplot(data = lcwgs_full %>% 
-       filter(chr == "NC_056456.1"),
-       aes(x = pos/1e6, 
-           y = -log10(pval))) +
-  geom_point() +  theme_classic() +
-  theme(axis.title.y = element_text(size = 12),
-        panel.grid   = element_blank(),
-        legend.position  = "none",
-        strip.background = element_blank(),
-        strip.placement  = "inside",
-        strip.text = element_text(size = 12)) +
-  labs(x = "Position (Mbp)",
-       y = expression(-log[10](p-value)))) 
+ 
+# (ots28_full <- ggplot(data = lcwgs_full %>% 
+#        filter(chr == "NC_056456.1"),
+#        aes(x = pos/1e6, 
+#            y = -log10(pval))) +
+#   geom_point() +  theme_classic() +
+#   theme(axis.title.y = element_text(size = 12),
+#         panel.grid   = element_blank(),
+#         legend.position  = "none",
+#         strip.background = element_blank(),
+#         strip.placement  = "inside",
+#         strip.text = element_text(size = 12)) +
+#   labs(x = "Position (Mbp)",
+#        y = expression(-log[10](p-value)))) 
 
 
 manh_ins <- \(df, x) { 
   
   main <- ggplot(df, 
                  aes(x = {{x}}/1e6,
-                     y = -log10(pval))) +
+                     y = -log10(qval))) +
     geom_point() + theme_classic() +
     labs(x = "Position (Mbp)",
-       y = expression(-log[10](p-value)))
+         y = expression(-log[10](p-value)))
 
-  ymax <- max(-log10(df$pval), na.rm = TRUE)
+  # ymax <- as.numeric(max(-log10(df$pval), na.rm = TRUE))
 
   mag <- main + coord_cartesian(clip = "off") +
     theme(plot.margin = ggplot2::margin(10,100,10,10)) +
-    geom_magnify(from = c(12,13,0,ymax),
-                 to   = c(48,56,0,ymax))
+    geom_magnify(from = c(12,13,0,10),
+                 to   = c(48,56,0,10))
 
 }
 
-(lcwgs <- manh_ins(df = lcwgs_full[lcwgs_full$chr == "NC_056456.1",], x = pos))
+(lcwgs <- manh_ins(df = lcwgs_imp[lcwgs_imp$CHROM == "NC_056456.1",], x = POS))
 (hdgbs <- manh_ins(df = hdgbs_imp[hdgbs_imp$CHROM == "NC_056456.1",], x = POS))
 
 (stack <- cowplot::plot_grid(plotlist = list(lcwgs, hdgbs),

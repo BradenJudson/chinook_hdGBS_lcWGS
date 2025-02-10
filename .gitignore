@@ -12,6 +12,7 @@ writing/
 **.geno
 data/shared_samples_n362.csv
 **.zscores
+data/allele_*.csv
 data/indv_clusters.txt
 data/chinook_full_sample_info.csv
 data/fst/
@@ -34,6 +35,8 @@ data/vcfs/
 pop_gen/*.csv
 comp/data/allele_mismatch_imp.csv
 comp/data/original_gls.txt
+data/snps_ref*.txt
+data/*sites.txt
 comp/lcwgs_imp.txt
 comp/data/allele_frequencies.csv
 data/*n453.txt
