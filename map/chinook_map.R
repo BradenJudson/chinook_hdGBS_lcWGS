@@ -1,16 +1,4 @@
-################################################################################
-#
-# Author: Braden J. Judson
-# Email: Braden.Judson@dfo-mpo.gc.ca
-# Date created: December 08, 2023
-# Date last modified: April 3, 2024
-#
-#
-################################################################################
-
 setwd("~/ots_landscape_genetics/map")
-
-# devtools::install_github("rspatial/geodata")
 
 library(ggplot2); library(tidyverse); library(raster); library(sf)
 library(bcmaps); library(ggspatial); library(sp); library(geodata)

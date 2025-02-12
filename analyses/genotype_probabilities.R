@@ -2,14 +2,15 @@ setwd("~/ots_landscape_genetics/comp")
 
 library(tidyverse); library(sqldf)
 
-files <- read.table("../data/bam_list_n453.txt", col.names = c("file")) %>%
-  mutate(fish_ID = gsub(".dedup.clip.bam", "",
-                        gsub("^.*IDT_i\\d{1,3}_\\d{1,3}\\.", "", file))) 
+# files <- read.table("../data/bam_list_n453.txt", col.names = c("file")) %>%
+#   mutate(fish_ID = gsub(".dedup.clip.bam", "",
+#                         gsub("^.*IDT_i\\d{1,3}_\\d{1,3}\\.", "", file))) 
 
 # From: https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_018296145.1/ (June 2024).
 chrs <- read_tsv("../data/otsh_Sequence_report.tsv", show_col_types = FALSE) %>% 
   filter(!`Chromosome name` %in% c("Un", "MT")) # Remove MT and unassembled contigs.
 
+# Have to leverage sql for this otherwise we do not have enough memory.
 gl_hist <- \(csv) {
 
   # To populate from for-loop.
@@ -51,7 +52,7 @@ gl_hist <- \(csv) {
   
 }
 
-imputed  <- gl_hist(csv = "../data/maximum_imputed_GLs.csv")
+imputed  <- gl_hist(csv = "../data/GLs/maximum_imputed_GLs.csv")
 write.csv(imputed,  "../data/imputed_histogram_data.csv",  row.names = F)
 
 original <- gl_hist(csv = "../data/maximum_original_GLs.csv")

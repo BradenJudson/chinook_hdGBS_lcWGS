@@ -18,6 +18,9 @@ data/indv_clusters.txt
 data/chinook_full_sample_info.csv
 data/fst/
 data/offset/
+data/**.txt
+data/pcadapt
+data/vcfs_n361
 data/hdgbs_snps_maf2_m60.snmf/
 **.snmfProject
 data/vcf_maf005.Imiss
@@ -80,6 +83,7 @@ map/dist_mat.txt
 map/distances_long.csv
 data/ch2023_sequenced_adj.txt
 comp/pops.txt
+data/GLs/
 !plots/raster.png
 pop_gen/hdgbs_fst.R
 data/shared_snps_135k.txt

@@ -7,7 +7,7 @@ indvs <- read.csv("../data/landgen_chinook_indvs.csv", na.strings = "") %>%
 indvs[indvs$site_full == "Upper Pitt", "site_full"] <- "Pitt"
 
 # Retain populations shared by all datasets.
-shared_pops <- unique(read.csv("../data/shared_samples_n362.csv")[,"site_full"]) 
+shared_pops <- unique(read.csv("../data/shared_samples_n361.csv")[,"site_full"]) 
 sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>% 
   mutate(Site = gsub("[[:space:]]", "", Site),
          sitenum = as.numeric(rownames(.))) %>% 
@@ -15,6 +15,8 @@ sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>%
   filter(Site %in% shared_pops)
 
 # --pca 1000 just ensures that all possible PCs are calculated (so %var explained is accurate).
+system("plink.exe --vcf ../data/vcfs_n361/hdgbs_maf5_m70_pruned.vcf.gz  --aec --pca 1000 --out ../data/pca/hdgbs_pruned")
+
 system("plink.exe --vcf ../data/vcfs/hdgbs_full_maf5_original_singletons.vcf  --aec --pca 1000 --out ../data/pca/hdgbs_full_original")
 system("plink.exe --vcf ../data/vcfs/lcWGS_full_8MSNPs_imputed.vcf.gz --double-id --aec --pca 1000 --out ../data/pca/lcWGS_full_8MSNPs_imputed")
 system("plink.exe --vcf ../data/vcfs/hdgbs_subset_134kSNPs_n362_original.vcf.gz --double-id --aec --pca 1000 --out ../data/pca/hdgbs_subset_original")
@@ -40,6 +42,7 @@ format_eigenvec <- \(eigenvec_file) {
 }
 
 # Obtain and organize PCA information for each dataset.
+hdgbs_pruned    <- format_eigenvec("../data/pca/hdgbs_pruned.eigenvec")
 hdgbs_full_pca  <- format_eigenvec("../data/pca/hdgbs_full_original.eigenvec")
 hdgbs_sub_pca   <- format_eigenvec("../data/pca/hdgbs_subset_original.eigenvec")
 lcwgs_s.imputed <- format_eigenvec("../data/pca/lcWGS_full_8MSNPs_imputed.eigenvec")
@@ -72,6 +75,11 @@ vcf_pca <- \(df, eigenval_file, title, legpos) {
   }
 
 # Visualize PCA for each "vcf-based" dataset. Add legend to first plot only.
+
+
+(hdg_pr <- vcf_pca(df = hdgbs_pruned, title = "hdGBS", legpos = "right",
+                   eigenval_file = "../data/pca/hdgbs_pruned.eigenval"))
+
 (hdg_f <- vcf_pca(df = hdgbs_full_pca[hdgbs_full_pca$site_full == "Imnaha",], 
                   "../data/pca/hdgbs_full_original.eigenval", title = "hdGBS", legpos = "right") +
     scale_x_continuous(transform = "reverse") +  scale_y_continuous(transform = "reverse"))
@@ -144,3 +152,35 @@ pop_legend <- cowplot::get_legend(hdg_f)
 
 ggsave("../plots/all_pcas.tiff", dpi = 300,
        width = 12, height = 12, bg = 'white')
+
+
+################################################################################
+
+scree <- \(eigenval_file, dataset) {
+  
+  dat <- read_tsv(eigenval_file, col_names = "eigenval") %>% 
+    mutate(axis = as.numeric(rownames(.)), PC = paste0("PC", axis)) %>% 
+    arrange(axis) %>% mutate(data = dataset)
+
+}
+
+hdgbs <- scree("../data/pca/hdgbs_full_original.eigenval", dataset = "hdgbs")
+test  <- scree("../data/pca/lcWGS_subset_imputed.eigenval", dataset = "two")
+
+full <- rbind(hdgbs, test) %>% 
+  group_by(data) %>% 
+  mutate(var_exp = eigenval/sum(eigenval)) %>% 
+  mutate(PC = factor(PC, levels = unique(PC)))
+
+(vars <- ggplot(data = full %>% filter(axis < 10), 
+                aes(x = PC, y = var_exp, 
+                    colour = data,
+                    group = data)) + 
+    geom_line() + theme_bw() +
+    labs(x = NULL, y = "Variance explained") +
+    scale_y_continuous(labels = scales::percent) +
+    theme(legend.title = element_blank(),
+          legend.position = c(0.9,0.9)))
+
+ggsave("../plots/pca_screeplot.tiff", dpi = 300, width = 8, height = 6)
+
