@@ -9,13 +9,9 @@ vcf2pc <- \(vcf_file) system(paste("plink.exe --vcf", vcf_file,
                            " --make-bed --aec --double-id --out", 
                            gsub("\\.vcf.gz", "", vcf_file)))
 
-# Make bed files.
-# vcf2pc("../data/vcfs/hdgbs_subset_134kSNPs_n362_imputed.vcf.gz")
-# vcf2pc("../data/vcfs/hdgbs_n361_maf5_m70.vcf.gz")
-# vcf2pc("../data/vcfs/chinook_lcwgs_maf1_m15_n361_imputed.vcf.gz")
-# vcf2pc("../data/vcfs/lcWGS_full_8MSNPs_imputed.vcf.gz")
-# vcf2pc("../data/vcfs_n361/lcwgs_maf5.gz")
+# Make bed files necessary for pcadapt.
 vcf2pc("../data/vcfs_n361/hdgbs_maf5_m70.vcf.gz")
+vcf2pc("../data/vcfs_n361/chinook_filtered_maf5_imputed.vcf.gz")
 
 
 # Function for conducting pcadapt analyses.
@@ -48,14 +44,8 @@ pcadapt2 <- \(vcf, K, q.alpha) {
 
 # Conduct pcadapt with specified parameters. Returns dataframe of all SNPs and their outlier scores/status.
 hdgbs  <- pcadapt2("../data/vcfs_n361/hdgbs_maf5_m70.vcf.gz", K = 5, q.alpha = 1/100)
-
-
-# hdprune <- pcadapt2("../data/vcfs_n361/hdgbs_maf5_m70_pruned.vcf.gz", K = 5, q.alpha = 1/100)
-#hdorig  <- pcadapt2("../data/vcfs_n361/hdgbs_maf5_m70.vcf.gz", K = 5, q.alpha = 1/100)
-# hdgbs_ori <- pcadapt2("../data/vcfs/hdgbs_n361_maf5_m70.vcf.gz", K = 5, q.alpha = 1/100)
-# lcwgs_imp <- pcadapt2("../data/vcfs/lcWGS_full_8MSNPs_imputed.vcf.gz", K = 5, q.alpha = 1/100)
-lcwgs_ori <- pcadapt2("../../chinook_filtered_maf5.vcf.gz", K = 5, q.alpha = 1/100)
-# lcwgs_imp2 <- pcadapt2("../data/vcfs/chinook_lcwgs_maf1_m15_n361_imputed.vcf.gz", K = 5, q.alpha = 1/100)
+lcimp  <- pcadapt2("../data/vcfs_n361/chinook_filtered_maf5_imputed.vcf.gz", K = 5, q.alpha = 1/100)
+# write.csv(lcimp, "../data/lcwgs_n361_7Msnps_pcadapt.csv", row.names = F)
 
 # BELOW NEED TO ADD SIGNIFICANCE THRESHOLD
 
@@ -65,15 +55,14 @@ grebrock <- c(13278338:13630075)
 Ots28man <- \(df) {
   
   # Maximum "height" on y-axis for points within GREB1L/ROCK1.
-  gr <- max(-log10(df[df$CHROM == "NC_056456.1" & df$POS %in% grebrock, "pval"]))
+  gr <- max(-log10(df[df$CHROM == "NC_056456.1" & df$POS %in% grebrock, "qval"]))
   mp <- median(grebrock)/1e6 # Median of that region. For plotting a label.
   
   # First plot everything that isn't in GREB1L/ROCK1 for cleaner visualization.
   ggplot(data = df[df$CHROM == "NC_056456.1" & !df$POS %in% grebrock,],
-         aes(x = POS/1e6, y = -log10(pval),
-             colour = greb)) +
+         aes(x = POS/1e6, y = -log10(qval))) +
     labs(x = "Ots28 Position (Mb)",
-         y = expression(-log[10](p-value))) +
+         y = expression(-log[10](q-value))) +
     geom_point(color = "gray") +
     theme_classic() +
     # Two annotation calls for labelling GREB1L, etc.
@@ -84,49 +73,11 @@ Ots28man <- \(df) {
     theme(legend.position = "none") +
     # Fill in points for GREB1L/ROCK1 in black so they are easier to see.
     geom_point(data = df[df$CHROM == "NC_056456.1" & df$POS %in% grebrock,],
-               aes(x = POS/1e6, y = -log10(pval)), inherit.aes = F, color = "black")
+               aes(x = POS/1e6, y = -log10(qval)), inherit.aes = F, color = "black")
 }
 
 (hdgbs28 <- Ots28man(hdgbs))
-# (lcwgs   <- Ots28man(lcwgs_ori))
-
-# ggplot(data = lcwgs_ori[lcwgs_ori$CHROM == "NC_056456.1",], aes(x = POS/1e6, y = -log10(pval))) + geom_point() + theme_bw() + geom_vline(xintercept = 13.6)
-# ggplot(data = hdgbs[hdgbs$CHROM == "NC_056456.1",], aes(x = POS, y = -log10(pval))) + geom_point()
-# ggplot(data = hdorig[hdorig$CHROM == "NC_056456.1",], aes(x = POS, y = -log10(pval))) + geom_point()
-
-# # For better plotting, read in chromosome info.
-# chrs <- read.delim("../data/otsh_sequence_report.tsv") %>% 
-#   filter(!Chromosome.name %in% c("MT", "Un")) %>% 
-#   mutate(Ots = gsub("LG", "Ots", Chromosome.name),
-#          LGN = as.factor(str_sub(Ots, 4, 5)))
-# 
-# 
-# # Isolate Ots28 for current purposes.
-# Ots28 <- rbind(hdgbs_imp[hdgbs_imp$CHROM == "NC_056456.1",],
-#                hdgbs_ori[hdgbs_ori$CHROM == "NC_056456.1",],
-#                lcwgs_imp[lcwgs_imp$CHROM == "NC_056456.1",]) 
-# 
-# (chromplot <- ggplot(data = Ots28, 
-#                      aes(x = POS/1e6,
-#                          y = -log(pval),
-#                          colour = out)) +
-#     scale_color_manual(values = c("gray70", "red1")) +
-#     geom_point() +
-#     theme_classic() +
-#     labs(x = "Position (Mbp)",
-#          y = expression(-log[10](p-value))) +
-#     theme(axis.title.y = element_text(size = 12),
-#           panel.grid   = element_blank(),
-#           legend.position  = "none",
-#           strip.background = element_blank(),
-#           strip.placement  = "inside",
-#           strip.text = element_text(size = 12)) +
-#     facet_wrap(~data, ncol = 1, scales = "free_x"))
-# 
-# 
-# ggsave("../plots/pcadapt_manhattan.tiff",
-#        dpi = 300, width = 10, height = 10)
-# 
+(lcimp28 <- Ots28man(lcimp))
 
 # ------------------------------------------------------------------------------
 
@@ -161,8 +112,9 @@ lcwgs_full <- lcwgs_outliers("../data/pcadapt/lcwgs_n361_pcadapt_7h2.pcadapt.zsc
 
 (lcma28 <- Ots28man(lcwgs_full))
 
-(mans <- cowplot::plot_grid(plotlist = list(hdgbs28, lcma), 
-                            ncol = 1, labels = c("hdGBS", "lcWGS"), label_x = 0.025))
+(mans <- cowplot::plot_grid(plotlist = list(hdgbs28, lcma28, lcimp28), 
+                            labels = c("hdGBS", "lcWGS", "Imputed lcWGS"), 
+                            label_x = 0.025, ncol = 1))
 
 ggsave("../plots/ots28_manhattans.tiff", dpi = 300, width = 12, height = 8)
 

@@ -21,6 +21,7 @@ data/offset/
 data/**.txt
 data/pcadapt
 data/vcfs_n361
+data/*pcadapt.csv
 data/hdgbs_snps_maf2_m60.snmf/
 **.snmfProject
 data/vcf_maf005.Imiss

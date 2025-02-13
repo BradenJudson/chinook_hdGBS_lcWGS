@@ -55,7 +55,7 @@ gl_hist <- \(csv) {
 imputed  <- gl_hist(csv = "../data/GLs/maximum_imputed_GLs.csv")
 write.csv(imputed,  "../data/imputed_histogram_data.csv",  row.names = F)
 
-original <- gl_hist(csv = "../data/maximum_original_GLs.csv")
+original <- gl_hist(csv = "../data/GLs/maximum_original_GLs.csv")
 write.csv(original, "../data/original_histogram_data.csv", row.names = F)
 
 hist2 <- \(df) { ggplot(data = df[df$NC_056429.1 != 0,],
