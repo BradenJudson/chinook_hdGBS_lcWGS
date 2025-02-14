@@ -4,122 +4,137 @@ library(tidyverse); library(vegan); library(gridExtra); library(pheatmap)
 library(reshape2); library(data.table); library(ggpmisc)
 
 
+
 # Site-wise Fst Estimates ------------------------------------------------------
 
-# Identify, read in and reformat site-wise Fst files.
-snp_fst <- list.files("../data/fst/", pattern = "weir.fst", full.names = T)
-fst_dat <- lapply(snp_fst,
-                  FUN = \(x) fread(x) %>% 
-                        rename("Fst" = 3)) %>% 
-  # Rename list elements and cut off string ".weir.fst".
-  `names<-`(., str_sub(basename(snp_fst), end = -10))
-
-# Function to collapse list into a wide format dataframe with better colnames.
-wfsnps <- \(x) map_df(x, ~as.data.frame(.x), .id = "dataset") %>% 
-  rename("Fst" = 4) %>% pivot_wider(., names_from = dataset, values_from = Fst)
-
-# Return data for subset and "full" datasets considered separately.
-sub_fst_snps  <- wfsnps(fst_dat[grepl("subset",  names(fst_dat))])
-full_fst_snps <- wfsnps(fst_dat[!grepl("subset", names(fst_dat))])
-
-# Establish improved labelling vector.
-plot_labs <- c("chinook_imputed_8M" = "Imputed lcWGS",
-               "hdgbs_full_imputed" = "hdGBS imputed",
-               "hdgbs_subset_134kSNPs_imputed" = "hdGBS subset imputed",
-               "lcwgs_imputed_134kSNPs_subset" = "lcWGS subset imputed")
-
-# From the wide-form dataframe, create a scatter plot of 
-# estimated site-wise Fst values. Set constant axis boundaries/labels.
-# Also print R2 and show OLS best fit line.
-scatterFST <- function(df, x_axis, y_axis) {
-  ggplot(data  = df,
-         aes(x = {{x_axis}},
-             y = {{y_axis}})) +
-    theme_classic() +
-    geom_point(shape = 21,
-               fill  = "gray",
-               colour= "black",
-               alpha = 3/4) +
-    stat_smooth(method = "lm",
-                alpha  = 1/6,
-                colour = "black",
-                linewidth = 2,
-                lineend = "round") +
-    stat_smooth(method = "lm",
-                alpha  = 1/6,
-                color  = "gray90",
-                lineend = "round") +
-    scale_x_continuous(limits = c(-0.05,1),
-                       breaks = seq(-0.1, 1, 1/4)) +
-    scale_y_continuous(limits = c(-0.05,1),
-                       breaks = seq(-0.1, 1, 1/4)) +
-    stat_poly_eq(use_label(c("R2", "p")),
-                 label.x = "left",
-                 label.y = "top",
-                 small.p = TRUE) +
-    labs(x = plot_labs[[deparse(substitute(x_axis))]],
-         y = plot_labs[[deparse(substitute(y_axis))]])
-}
-
-# Subset data scatter plots.
-(s1 <- scatterFST(sub_fst_snps, hdgbs_subset_134kSNPs_imputed, lcwgs_imputed_134kSNPs_subset))
-
-# Full data scatter plots.
-(f1 <- scatterFST(full_fst_snps, hdgbs_full_imputed, chinook_imputed_8M))
-
-# Function for creating Manhattan plots for Ots28 only. 
-manhat3 <- \(df) {
-  
-  # First pivot from wide to long form and choose chromosome.
-  lf_df <- pivot_longer(data = df[df$CHROM == "NC_056456.1",], 
-                        cols = 3:ncol(df),
-                        values_to = "Fst",
-                        names_to  = "dataset")
-  
-  ggplot(data  = lf_df, 
-         aes(x = POS/1e6, 
-             y = Fst)) +
-    geom_point(shape = 21,
-               fill  = "gray80",
-               alpha = 4/5) +
-    labs(x = "Position (Mbp)",
-         y = expression(F[ST])) +
-    theme_bw() +
-    facet_wrap( ~ dataset, ncol = 1, scales = "free_x", 
-                labeller = as_labeller(plot_labs)) +
-    theme(strip.background = element_rect(color = NA, fill = NA),
-          plot.background  = element_blank(),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          panel.border = element_blank(),
-          strip.placement = "inside",
-          strip.text.x = element_text(size = 12),
-          axis.line    = element_line(colour = "black")) 
-    # free_x necessary to keep bottom panel across facets.
-    
-}
-
-# Arrange Manhattan and scatter plots together.
-# Left (A) is Ots28 only, and right (B) is genome-wide.
-cowplot::plot_grid(
-  manhat3(df = sub_fst_snps),
-  cowplot::plot_grid(s1, f1, 
-           ncol = 1, scale = 9/10),
-  labels = c("A)", "B)"),
-  rel_widths = c(2, 1)
-)
-
-ggsave("../plots/site_wise_fst.tiff", 
-       dpi = 300, width = 14, height = 7, bg = "white")
-
-ggsave("../plots/site_wise_fst.png", 
-       dpi = 300, width = 14, height = 7)
+# # Identify, read in and reformat site-wise Fst files.
+# snp_fst <- list.files("../data/fst/", pattern = "weir.fst", full.names = T)
+# fst_dat <- lapply(snp_fst,
+#                   FUN = \(x) fread(x) %>% 
+#                         rename("Fst" = 3)) %>% 
+#   # Rename list elements and cut off string ".weir.fst".
+#   `names<-`(., str_sub(basename(snp_fst), end = -10))
+# 
+# # Function to collapse list into a wide format dataframe with better colnames.
+# wfsnps <- \(x) map_df(x, ~as.data.frame(.x), .id = "dataset") %>% 
+#   rename("Fst" = 4) %>% pivot_wider(., names_from = dataset, values_from = Fst)
+# 
+# # Return data for subset and "full" datasets considered separately.
+# sub_fst_snps  <- wfsnps(fst_dat[grepl("subset",  names(fst_dat))])
+# full_fst_snps <- wfsnps(fst_dat[!grepl("subset", names(fst_dat))])
+# 
+# # Establish improved labelling vector.
+# plot_labs <- c("chinook_imputed_8M" = "Imputed lcWGS",
+#                "hdgbs_full_imputed" = "hdGBS imputed",
+#                "hdgbs_subset_134kSNPs_imputed" = "hdGBS subset imputed",
+#                "lcwgs_imputed_134kSNPs_subset" = "lcWGS subset imputed")
+# 
+# # From the wide-form dataframe, create a scatter plot of 
+# # estimated site-wise Fst values. Set constant axis boundaries/labels.
+# # Also print R2 and show OLS best fit line.
+# scatterFST <- function(df, x_axis, y_axis) {
+#   ggplot(data  = df,
+#          aes(x = {{x_axis}},
+#              y = {{y_axis}})) +
+#     theme_classic() +
+#     geom_point(shape = 21,
+#                fill  = "gray",
+#                colour= "black",
+#                alpha = 3/4) +
+#     stat_smooth(method = "lm",
+#                 alpha  = 1/6,
+#                 colour = "black",
+#                 linewidth = 2,
+#                 lineend = "round") +
+#     stat_smooth(method = "lm",
+#                 alpha  = 1/6,
+#                 color  = "gray90",
+#                 lineend = "round") +
+#     scale_x_continuous(limits = c(-0.05,1),
+#                        breaks = seq(-0.1, 1, 1/4)) +
+#     scale_y_continuous(limits = c(-0.05,1),
+#                        breaks = seq(-0.1, 1, 1/4)) +
+#     stat_poly_eq(use_label(c("R2", "p")),
+#                  label.x = "left",
+#                  label.y = "top",
+#                  small.p = TRUE) +
+#     labs(x = plot_labs[[deparse(substitute(x_axis))]],
+#          y = plot_labs[[deparse(substitute(y_axis))]])
+# }
+# 
+# # Subset data scatter plots.
+# (s1 <- scatterFST(sub_fst_snps, hdgbs_subset_134kSNPs_imputed, lcwgs_imputed_134kSNPs_subset))
+# 
+# # Full data scatter plots.
+# (f1 <- scatterFST(full_fst_snps, hdgbs_full_imputed, chinook_imputed_8M))
+# 
+# # Function for creating Manhattan plots for Ots28 only. 
+# manhat3 <- \(df) {
+#   
+#   # First pivot from wide to long form and choose chromosome.
+#   lf_df <- pivot_longer(data = df[df$CHROM == "NC_056456.1",], 
+#                         cols = 3:ncol(df),
+#                         values_to = "Fst",
+#                         names_to  = "dataset")
+#   
+#   ggplot(data  = lf_df, 
+#          aes(x = POS/1e6, 
+#              y = Fst)) +
+#     geom_point(shape = 21,
+#                fill  = "gray80",
+#                alpha = 4/5) +
+#     labs(x = "Position (Mbp)",
+#          y = expression(F[ST])) +
+#     theme_bw() +
+#     facet_wrap( ~ dataset, ncol = 1, scales = "free_x", 
+#                 labeller = as_labeller(plot_labs)) +
+#     theme(strip.background = element_rect(color = NA, fill = NA),
+#           plot.background  = element_blank(),
+#           panel.grid.major = element_blank(),
+#           panel.grid.minor = element_blank(),
+#           panel.border = element_blank(),
+#           strip.placement = "inside",
+#           strip.text.x = element_text(size = 12),
+#           axis.line    = element_line(colour = "black")) 
+#     # free_x necessary to keep bottom panel across facets.
+#     
+# }
+# 
+# # Arrange Manhattan and scatter plots together.
+# # Left (A) is Ots28 only, and right (B) is genome-wide.
+# cowplot::plot_grid(
+#   manhat3(df = sub_fst_snps),
+#   cowplot::plot_grid(s1, f1, 
+#            ncol = 1, scale = 9/10),
+#   labels = c("A)", "B)"),
+#   rel_widths = c(2, 1)
+# )
+# 
+# ggsave("../plots/site_wise_fst.tiff", 
+#        dpi = 300, width = 14, height = 7, bg = "white")
+# 
+# ggsave("../plots/site_wise_fst.png", 
+#        dpi = 300, width = 14, height = 7)
 
 
 # Population Fst estimates -----------------------------------------------------
 
+hdgbs <- read.delim("../data/fst/hdgbs_ldprune_hudson.fst.summary", sep = "") %>% 
+  ConGenFunctions::df2pmat(df = ., var = "HUDSON_FST", grp1 = "X.POP1", grp2 = "POP2")
+
+hdfst <- read.csv("../data/fst/hdgbs_original_full.csv", row.names = 1) %>% 
+  filter(rownames(.) %in% rownames(hdgbs)) %>% 
+  .[,colnames(.) %in% colnames(hdgbs)]
+
+# hdlf <- pmat2df(hdgbs)
+# hdhu <- pmat2df(hdfst)
+# hdboth <- merge(hdlf, hdhu, by = c("X1", "X2"))
+# ggplot(data = hdboth, aes(x = dist.x, y = dist.y)) + geom_point()
+# summary(lm(data = hdboth, dist.x ~ dist.y))
+
+
 # Retain populations shared by all datasets.
-shared_pops <- unique(read.csv("../data/shared_samples_n362.csv")[,"site_full"]) 
+shared_pops <- unique(read.csv("../data/shared_samples_n361.csv")[,"site_full"]) 
 
 # List all pairwise Fst matrix files.
 files <- list.files(path = "../data/fst/",

@@ -31,6 +31,7 @@ data/pop_map_n361.txt
 data/hdgbs_sub_pcascores.csv
 analyses/positions.txt
 data/vcfs/
+**.gtf
 **.mean
 **.frq
 **.lmiss

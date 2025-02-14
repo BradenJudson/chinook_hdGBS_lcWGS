@@ -15,12 +15,8 @@ sites <- read.delim(file = "../data/ch2023_sequenced.txt") %>%
   filter(Site %in% shared_pops)
 
 # --pca 1000 just ensures that all possible PCs are calculated (so %var explained is accurate).
-system("plink.exe --vcf ../data/vcfs_n361/hdgbs_maf5_m70_pruned.vcf.gz  --aec --pca 1000 --out ../data/pca/hdgbs_pruned")
-
-system("plink.exe --vcf ../data/vcfs/hdgbs_full_maf5_original_singletons.vcf  --aec --pca 1000 --out ../data/pca/hdgbs_full_original")
-system("plink.exe --vcf ../data/vcfs/lcWGS_full_8MSNPs_imputed.vcf.gz --double-id --aec --pca 1000 --out ../data/pca/lcWGS_full_8MSNPs_imputed")
-system("plink.exe --vcf ../data/vcfs/hdgbs_subset_134kSNPs_n362_original.vcf.gz --double-id --aec --pca 1000 --out ../data/pca/hdgbs_subset_original")
-system("plink.exe --vcf ../data/vcfs/chinook_lcwgs_maf1_m15_n361_imputed.vcf.gz --double-id --aec --pca 1000 --out ../data/pca/lcWGS_subset_imputed")
+system("plink.exe --vcf ../data/vcfs_n361/hdgbs_maf5_m70_pruned.vcf.gz  --aec --double-id --pca 1000 --out ../data/pca/hdgbs_pruned")
+system("plink.exe --vcf ../data/vcfs_n361/lcwgs_ldpruned_maf005_n361.vcf.gz --aec --double-id --pca 1000 --out ../data/pca/lcwgs_imputed_pruned")
 
 # Format PCA output data from above.
 format_eigenvec <- \(eigenvec_file) {
@@ -42,11 +38,9 @@ format_eigenvec <- \(eigenvec_file) {
 }
 
 # Obtain and organize PCA information for each dataset.
-hdgbs_pruned    <- format_eigenvec("../data/pca/hdgbs_pruned.eigenvec")
-hdgbs_full_pca  <- format_eigenvec("../data/pca/hdgbs_full_original.eigenvec")
-hdgbs_sub_pca   <- format_eigenvec("../data/pca/hdgbs_subset_original.eigenvec")
-lcwgs_s.imputed <- format_eigenvec("../data/pca/lcWGS_full_8MSNPs_imputed.eigenvec")
-lcwgs_f.imputed <- format_eigenvec("../data/pca/lcWGS_subset_imputed.eigenvec")
+hdgbs_pruned <- format_eigenvec("../data/pca/hdgbs_pruned.eigenvec")
+lcimp_pruned <- format_eigenvec("../data/pca/lcwgs_imputed_pruned.eigenvec")
+
 
 # Function for visualizing the PCA information for each dataset.
 vcf_pca <- \(df, eigenval_file, title, legpos) {
@@ -61,7 +55,7 @@ vcf_pca <- \(df, eigenval_file, title, legpos) {
                        aes(x = PC1, y = PC2,
                            group = site_full, 
                            fill = factor(Latitude))) + 
-                geom_point(shape = 21) + theme_bw() +
+                geom_point(shape = 21, size = 2) + theme_bw() +
                 scale_fill_manual(values = c(viridis_pal(option = "D")(length(unique(df$site_full)))),
                                   labels = levels(unique(df$site_full))) +
                 theme(legend.title = element_blank(),
@@ -75,18 +69,11 @@ vcf_pca <- \(df, eigenval_file, title, legpos) {
   }
 
 # Visualize PCA for each "vcf-based" dataset. Add legend to first plot only.
-
-
+(lci_pc <- vcf_pca(df = lcimp_pruned, title = "Imputed lcWGS", legpos = "none",
+                   eigenval_file = "../data/pca/lcwgs_imputed_pruned.eigenval"))
 (hdg_pr <- vcf_pca(df = hdgbs_pruned, title = "hdGBS", legpos = "right",
                    eigenval_file = "../data/pca/hdgbs_pruned.eigenval"))
 
-(hdg_f <- vcf_pca(df = hdgbs_full_pca[hdgbs_full_pca$site_full == "Imnaha",], 
-                  "../data/pca/hdgbs_full_original.eigenval", title = "hdGBS", legpos = "right") +
-    scale_x_continuous(transform = "reverse") +  scale_y_continuous(transform = "reverse"))
-(hdg_s <- vcf_pca(df = hdgbs_sub_pca,  "../data/pca/hdgbs_subset_original.eigenval", title = "hdGBS subset", legpos = "none") +
-    scale_x_continuous(transform = "reverse"))
-(lci_f <- vcf_pca(df = lcwgs_f.imputed, "../data/pca/lcWGS_full_8MSNPs_imputed.eigenval", title = "lcWGS imputed", legpos = "none"))
-(lci_s <- vcf_pca(df = lcwgs_s.imputed, "../data/pca/lcWGS_subset_imputed.eigenval", title = "lcWGS imputed subset", legpos = "none"))
 
 # We require a different function for the lcWGS PCA data (it's a *.cov file).
 lcwgs_pca <- \(cov_mat, bam_list, title) {
@@ -134,24 +121,22 @@ lcwgs_pca <- \(cov_mat, bam_list, title) {
 
 (lcwgs_full <- lcwgs_pca(cov_mat  = "../data/pca/lcwgs_full_8MSNPs.cov",
                          bam_list = "../data/lcwgs_bam_list_n453.txt",
-                         title = "lcWGS"))
+                         title = "lcWGS") +
+    scale_x_continuous(transform = "reverse") +
+    scale_y_continuous(transform = "reverse"))
 
-(lcwgs_subs <- lcwgs_pca(cov_mat  = "../data/pca/angsd_subset134ksnps.cov",
-                         bam_list = "../data/lcwgs_bam_list_n453.txt",
-                         title = "lcWGS subset") + 
-                         scale_x_continuous(transform = "reverse"))
 
 # First, extract the legend of one plot.
-pop_legend <- cowplot::get_legend(hdg_f)
+pop_legend <- cowplot::get_legend(hdg_pr)
 
 # Arrange PCAs in an organized grid with a shared legend structure.
 (all_pcas  <- cowplot::plot_grid(cowplot::plot_grid(plotlist = list(
-  hdg_f + theme(legend.position = "none"), hdg_s, lci_f, lci_s, 
-  lcwgs_full, lcwgs_subs), ncol = 2, align  = "VH"), pop_legend, 
-  ncol = 2, rel_widths = c(6,1)))
+  hdg_pr + theme(legend.position = "none"), lci_pc, lcwgs_full), 
+  ncol = 1, align  = "VH"), pop_legend, 
+  rel_widths = c(6,1)))
 
-ggsave("../plots/all_pcas.tiff", dpi = 300,
-       width = 12, height = 12, bg = 'white')
+ggsave("../plots/pcas_ldpruned_main.tiff", dpi = 300,
+       width = 8, height = 12, bg = 'white')
 
 
 ################################################################################
@@ -164,10 +149,10 @@ scree <- \(eigenval_file, dataset) {
 
 }
 
-hdgbs <- scree("../data/pca/hdgbs_full_original.eigenval", dataset = "hdgbs")
-test  <- scree("../data/pca/lcWGS_subset_imputed.eigenval", dataset = "two")
+hdg_scr <- scree("../data/pca/hdgbs_full_original.eigenval", dataset = "hdGBS")
+imp_scr <- scree("../data/pca/lcwgs_imputed_pruned.eigenval", dataset = "Imputed lcWGS")
 
-full <- rbind(hdgbs, test) %>% 
+full <- rbind(hdg_scr, imp_scr) %>% 
   group_by(data) %>% 
   mutate(var_exp = eigenval/sum(eigenval)) %>% 
   mutate(PC = factor(PC, levels = unique(PC)))
@@ -176,11 +161,14 @@ full <- rbind(hdgbs, test) %>%
                 aes(x = PC, y = var_exp, 
                     colour = data,
                     group = data)) + 
-    geom_line() + theme_bw() +
+    geom_line(size = 1) + theme_bw() +
+    geom_point(shape = 21, colour = "white",
+               aes(fill = data), size = 4) +
     labs(x = NULL, y = "Variance explained") +
     scale_y_continuous(labels = scales::percent) +
     theme(legend.title = element_blank(),
-          legend.position = c(0.9,0.9)))
+          legend.position = c(0.9,0.93),
+          legend.box.background = element_rect(color = "black")))
 
 ggsave("../plots/pca_screeplot.tiff", dpi = 300, width = 8, height = 6)
 

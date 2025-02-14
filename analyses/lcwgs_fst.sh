@@ -5,7 +5,7 @@
 #SBATCH --time=168:00:00
 #SBATCH --mem-per-cpu=5G
 #SBATCH --cpus-per-task=64
-#SBATCH --array=10-1596
+#SBATCH --array=1-1225
 
 # Array is 1/2*(number of populations * (number of populations - 1)).
 
