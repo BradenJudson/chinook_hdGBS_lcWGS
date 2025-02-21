@@ -2,15 +2,6 @@ setwd("~/ots_landscape_genetics/analyses/")
 
 library(tidyverse); library(purrr); library(ggpmisc); library(ggpointdensity)
 
-
-# To do ------------------------------------------------------------------------
-
-# Compare genotype likelihoods with imputed vs. non-imputed.
-# Do the "allele matching and AF comparisons with the entirety of the hdGBS and 
-  # imputed datasets (i.e., don't go individual-by-individual). Boxplots!
-
-
-
 ################################################################################
 ################# Part I: Imputed loci only ####################################
 ################################################################################
@@ -38,13 +29,11 @@ rf <- function(dir) paste0(dir,
 
 # Read in each dataset and format.
 hdgbs <- rf(dir = "../data/ind_afs/hdgbs_n361_ref/") %>% 
-  rename("ref_frq_hd" = AL1AF)
-hdgbs$ref_frq <- hdgbs$AL1AF
+  mutate(ref_frq_hd = AL1AF)
+# hdgbs$ref_frq <- hdgbs$AL1AF
 lcwgs <- rf(dir = "../data/ind_afs/impLC_n361_ref/") %>% 
   mutate(ref_frq_lcwg = AL1AF)
 lcwgs$sample <- gsub("_freq_GLs.txt.frq", "", lcwgs$sample)
-
-# Combine lcWGS and hdGBS datasets. 
 dat <- merge(hdgbs, lcwgs, by = c("CHROM", "POS", "sample", "site")) %>% 
   rename("ref_hd_nuc" = AL1Nuc.x, "alt_hd_nuc" = AL2Nuc.x,
          "ref_lc_nuc" = AL1Nuc.y, "alt_lc_nuc" = AL2Nuc.y,
@@ -72,31 +61,29 @@ matched_alleles <- unique(dat[(dat$ref_hd_nuc == dat$ref_lc_nuc) & (dat$alt_hd_n
 # write.csv(c.allele, "./data/allele_mismatch_imp.csv", row.names = F)
 
 # Establish panel labels for facet wrap in the next step.
-fwlabs <- c('acc_match' = "Percentage of matching genotypes",
-  'acc_m1'    = "Percentage of genotypes with one mismatch",
-  "acc_m2"    = "Percentage of genotypes with two mismatches")
+fwlabs <- c('acc_match' = "Matching genotypes",
+  'acc_m1'    = "Genotypes with one mismatch",
+  "acc_m2"    = "Genotypes with two mismatches")
 
 # Plot individual  mismatches, etc.
 (alLF <- mismatches[,c("sample", "acc_match", "acc_m1", "acc_m2")] %>% 
   pivot_longer(cols = c("acc_match", "acc_m1", "acc_m2")) %>% 
     mutate(name = factor(name, levels = c("acc_match", "acc_m1", "acc_m2"))) %>% 
-  ggplot(aes(x = name, y = value/100)) + geom_boxplot(outlier.alpha = 0.5) +
-    # geom_jitter(width = 1/8, shape = 21,
-    #             colour = "black", fill = "grey25", 
-    #             alpha = 1/4) + 
+  ggplot(aes(x = name, y = value/100)) + geom_violin() +
+    geom_boxplot(outlier.alpha = 0, width = 0.4) +
     theme_bw() +
-    facet_wrap(. ~ name, scales = "free", labeller = as_labeller(fwlabs)) +
+    facet_wrap(. ~ name, scales = "free", 
+               labeller = as_labeller(fwlabs)) +
     labs(x = NULL, y = NULL) + 
-    scale_y_continuous(labels = \(x) sprintf("%.1f", x*100)) +
+    scale_y_continuous(labels = scales::percent, n.breaks = 3) +
     theme(axis.text.x = element_blank(),
           axis.ticks.x = element_blank()))
 ggsave("../plots/imp_accuracy2.tiff", dpi = 300, width = 10, height = 6)
 
 # Characterize matching/mismatching rate distributions
-summary(c.allele$acc_match); hist(c.allele$acc_match, main = NULL, xlab = "Accuracy (%)")
-summary(c.allele$acc_m1); hist(c.allele$acc_m1, main = NULL, xlab = "Accuracy (%)")
-summary(c.allele$acc_m2); hist(c.allele$acc_m2, main = NULL, xlab = "Accuracy (%)")
-
+summary(mismatches$acc_match); hist(mismatches$acc_match, main = NULL, xlab = "Accuracy (%)")
+summary(mismatches$acc_m1); hist(mismatches$acc_m1, main = NULL, xlab = "Accuracy (%)")
+summary(mismatches$acc_m2); hist(mismatches$acc_m2, main = NULL, xlab = "Accuracy (%)")
 
 
 # Allele frequencies -----------------------------------------------------------
@@ -132,6 +119,7 @@ freqs <- merge(hd_afs, lc_afs, by = c("CHROM", "POS","n")) %>%
   filter(site %in% matched_alleles)
 
 write.csv(freqs, "../data/allele_frequencies_n361_refalt.csv", row.names = F)
+freqs <- read.csv("../data/allele_frequencies_n361_refalt.csv")
 
 (frqs <- ggplot(data = freqs, aes(x = AF, y = AFlci)) +
   geom_pointdensity() +
@@ -145,16 +133,18 @@ write.csv(freqs, "../data/allele_frequencies_n361_refalt.csv", row.names = F)
   stat_poly_eq(use_label(c("R2")), label.x = "right",
                label.y = "bottom") +
   labs(x = "hdGBS reference allele frequency",
-       y = "imputed lcWGS reference allele frequency")) 
+       y = "Imputed lcWGS reference allele frequency")) 
 
 ggsave("../plots/imputed_vs_hdgbs_maj_frqs.tiff", dpi = 300, height = 8, width = 8)
 
 (frqlm <- lm(data = freqs, AFlci ~ AF)); summary(frqlm)
-hist(frqlm$residuals); summary(frqlm$residuals)
+hist(frqlm$residuals, breaks = 200); summary(frqlm$residuals)
+# q <- frqlm$residuals
+# sum(q < 0)
 
 (rhist <- ggplot(data = data.frame(res = frqlm$residuals),
                 aes(x = res)) + theme_bw() +
-  geom_histogram(bins = 250) +
+  geom_density() +
   labs(x = "Residual", y = "Count"))
 
 cowplot::plot_grid(plotlist = list(frqs, rhist), 
@@ -165,128 +155,12 @@ ggsave("../plots/test.tiff", dpi = 300,
        width = 10, height = 10)
 
 
-# # AF Comparisons ---------------------------------------------------------------
-# 
-# # Deal with allele frequencies output from actual genotypes (via vcftools) first.
-# (frq_files <- paste0("./data/", list.files(pattern = ".*\\.frq", path = "./data"))[1:2])
-# 
-# files <- lapply(frq_files, read_table,
-#                 col_names = c("CHROM", "POS", "N_ALLELES", 
-#                               "N_CHR", "MajAll", "MinAll")) %>% 
-#   `names<-`(.,c("hdGBS", "lcWGS_imputed")) %>% 
-#   lapply(., function(x) x %>% filter(MajAll != "{ALLELE:FREQ}") %>% 
-#            mutate(MajAF  = as.numeric(sub(".*:", "", MajAll)),
-#                   MajNuc = as.factor(substr(MajAll, start = 0, stop = 1)),
-#                   MinAF  = as.numeric(sub(".*:", "", MinAll)),
-#                   MinNuc = as.factor(substr(MinAll, start = 0, stop = 1)),
-#                   genPos = paste0(CHROM, "_", POS)) %>% 
-#            filter(genPos %in% hd_pos) %>% 
-#            select(!c("MajAll", "MinAll", "N_CHR", "N_ALLELES", "genPos")))
-# 
-# 
-# # Process allele frequencies derived from genotype likelihoods second.
-# # Formatting is different and requires some modification for consistency.
-# LCAFs <- read_table("../data/lcafs_maf005.mafs", skip = 1,
-#                            col_names = c("CHROM", "POS", "MinAF")) %>% 
-#   filter(!is.na(MinAF)) %>% mutate(MinAF = as.numeric(MinAF),
-#                                    MajAF = 1-MinAF,
-#                                    genPos = paste0(CHROM, "_", POS)) %>% 
-#   filter(genPos %in% hd_pos) %>% select(c("CHROM", "POS", "MajAF"))  
-# 
-# # Join allele frequency files together for all 3 datasets.
-# afs <- purrr::map_df(files, ~as.data.frame(.x), .id = "dataset") %>% 
-#   select(c(1:4)) %>% rbind(., LCAFs %>% mutate(dataset = "lcWGS")) %>% 
-#   pivot_wider(names_from = dataset, values_from = MajAF) 
-# 
-# write.csv(afs, "allele_frequencies.csv", row.names = F)
-# 
-# # Write a function plot allele frequencies for common SNPs.
-# af_comp <- \(x, y) {
-#   (plot <- ggplot(data = afs, aes(x = {{x}}, y = {{y}})) +
-#      theme_bw() + geom_point(alpha = 1/6)  +
-#      geom_smooth(method= "lm", colour = "deepskyblue3") +
-#      stat_poly_eq(use_label(c("R2")), label.x = "right", label.y = "bottom") +
-#     geom_abline(slope = 1, intercept = 0, colour = "deepskyblue3", linetype = 2) +
-#      labs(x = paste(gsub("_", " ", rlang::as_label(eval(parse(text=enquo(x)))[[2]])), "major allele frequency"),
-#           y = paste(gsub("_", " ", rlang::as_label(eval(parse(text=enquo(y)))[[2]])), "major allele frequency")))
-#   
-#     return(plot)
-#     
-#     }
-# 
-# # Join plots of interest together.
-# cowplot::plot_grid(plotlist = list(
-#   af_comp(x = hdGBS, y = lcWGS_imputed),
-#   af_comp(x = hdGBS, y = lcWGS),
-#   af_comp(x = lcWGS, y = lcWGS_imputed)), 
-#   ncol = 1, nrow = 3)
-# 
-# ggsave("../plots/afs_comparisons.png", dpi = 300, height = 16, width = 8)
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# # ################################################################################
-# # ################# Part II: All SNPs ############################################
-# # ################################################################################
-# # 
-# # # All SNPs ----------------------------------------------------------------
-# # 
-# # 
-# # rff <- function(x) x %>% filter(MajAll != "{ALLELE:FREQ}") %>% 
-# #   mutate(MajAF = as.numeric(sub(".*:", "", MajAll)),
-# #          MajNuc  = as.factor(substr(MajAll, start = 0, stop = 1)),
-# #          MinAF = as.numeric(sub(".*:", "", MinAll)),
-# #          MinNuc = as.factor(substr(MinAll, start = 0, stop = 1))) %>% 
-# #   select(!c("MajAll", "MinAll", "N_CHR", "N_ALLELES"))
-# # 
-# # 
-# # # LCo <- rff(x = read_table("../data/global_original_freqGLs.frq",
-# # #                   col_names = c("CHROM", "POS", "N_ALLELES", 
-# # #                                 "N_CHR", "MajAll", "MinAll")))
-# # 
-# # LCo <- read_table("../data/lcafs_maf005.mafs", skip = 1,
-# #                   col_names = c("CHROM", "POS", "MinAF")) %>% 
-# #   filter(!is.na(MinAF)) %>% mutate(MinAF = as.numeric(MinAF),
-# #                                    MajAF = 1-MinAF,
-# #                                    genPos = paste0(CHROM, "_", POS)) %>% 
-# #   filter(!rownames(.) %in% c(43830, 82753, 121301)) 
-# # 
-# # LCi <- rff(x = read_table("../data/global_imputed_freqGLs.frq",
-# #                           col_names = c("CHROM", "POS", "N_ALLELES", 
-# #                                         "N_CHR", "MajAll", "MinAll"))) %>% 
-# #   rename(iMajAF = "MajAF", iMajNuc = "MajNuc", 
-# #          iMinAF = "MinAF", iMinNuc = "MinNuc") %>% 
-# #   mutate(GP = paste0(CHROM, "_", POS))
-# # 
-# # 
-# # fAFs <- merge(LCo, LCi, by = c("CHROM", "POS")) %>% 
-# #   pivot_longer(cols = c(MajAF, iMajAF))  %>% 
-# #   mutate(dataset = case_when(
-# #     name == "MajAF"  ~ "lcWGS",
-# #     name == "iMajAF" ~ "Imputed lcWGS")) 
-# # 
-# # 
-# # (lc_lm <- ggplot(data = fAFs) +
-# #   geom_histogram(aes(x = value),  bins = 40,
-# #                 colour = "black", fill = "grey80") +
-# #   facet_wrap(~dataset, ncol = 1,
-# #              strip.position = "right") +
-# #   labs(x = "Major allele frequency",
-# #        y = "Number of SNPs") +
-# #   theme_bw() + 
-# #   theme(strip.background = element_blank()))
-# # 
-# # ggsave("../plots/majallele_frq_lowcov.tiff", dpi = 300, 
-# #        width = 10, height = 8)
-# # 
-# # (summ <- fAFs %>% 
-# #   group_by(dataset) %>% 
-# #   summarise(mean   = mean(value),
-# #             stdev  = sd(value),
-# #             median = median(value)))
-# 
-# 
+# SNP Density ------------------------------------------------------------------
+
+# Using vcftools --gzvcf *.vcf.gz --SNPdensity 1000
+
+lcwgs_snpden <- read.delim("../data/chinook_lcwgs_snp_density.snpden", sep = "\t")
+hdgbs_snpden <- read.delim("../data/hdgbs_snp_density.snpden", sep = "\t")
+
+summary(lcwgs_snpden$VARIANTS.KB); hist(lcwgs_snpden$VARIANTS.KB)
+summary(hdgbs_snpden$VARIANTS.KB); hist(hdgbs_snpden$VARIANTS.KB)
