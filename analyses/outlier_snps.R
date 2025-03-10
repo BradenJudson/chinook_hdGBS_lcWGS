@@ -49,40 +49,19 @@ lcimp  <- pcadapt2("../data/vcfs_n361/chinook_filtered_maf5_imputed.vcf.gz", K =
 # write.csv(lcimp, "../data/lcwgs_n361_7Msnps_pcadapt.csv", row.names = F)
 # lcimp <- read.csv("../data/lcwgs_n361_7Msnps_pcadapt.csv")
 
-# Define region of Ots28 containing GREB1L/ROCK1.
-grebrock <- c(13278338:13630075)
+genome_manhattan <- \(ds) {
+  
+  ggplot(data = ds,
+         aes(x = POS/1e6, y = -log10(qval))) + 
+    geom_point() + facet_wrap(~CHROM, scales= "free_x") +
+    theme_bw() + labs(x = "Position (Mbp)")
+  
+}
 
-# Ots28man <- \(df) {
-#   
-#   # Maximum "height" on y-axis for points within GREB1L/ROCK1.
-#   gr <- max(-log10(df[df$CHROM == "NC_056456.1" & df$POS %in% grebrock, "qval"]))
-#   mp <- median(grebrock)/1e6 # Median of that region. For plotting a label.
-#   
-#   df$outlier <- as.factor(case_when(POS %in% shared_list  & out == "Y" ~ "Shared outlier",
-#                                     POS %in% shared_list  & out == "N" ~ "Non-outlier",
-#                                     !POS %in% shared_list & out == "Y" ~ "Unique outlier",
-#                                     !POS %in% shared_list & out == "N" ~ "Non-outlier"))
-#   
-#   ggplot(data = df[df$CHROM == "NC_056456.1" ,],
-#          aes(x = POS/1e6, y = -log10(qval), colour = out)) +
-#     labs(x = "Ots28 Position (Mb)",
-#          y = expression(-log[10](q-value))) +
-#     geom_point() +
-#     scale_colour_manual(values = c("gray80", "black")) +
-#     theme_classic() +
-#     # Two annotation calls for labelling GREB1L, etc.
-#     annotate("text", label="GREB1L/ROCK1",
-#              x = mp, y = gr*2.15,angle=45) +
-#     annotate("segment", x = mp, y = gr*2, xend = mp, yend = gr+gr*0.1,
-#              arrow = arrow(type = "closed", length = unit(0.02, "npc"))) +
-#     theme(legend.position = "none") 
-#     # # Fill in points for GREB1L/ROCK1 in black so they are easier to see.
-#     # geom_point(data = df[df$CHROM == "NC_056456.1" & df$POS %in% grebrock,],
-#     #            aes(x = POS/1e6, y = -log10(qval)), inherit.aes = F, color = "black")
-# }
-# 
-# (hdgbs28 <- Ots28man(hdgbs))
-# (lcimp28 <- Ots28man(lcimp))
+(hdgbs_GW <- genome_manhattan(hdgbs))
+ggsave("../plots/supp_figs/hdgbs_manhattan.tiff", dpi = 300, width = 15, height = 10)
+(lcimp_GW <- genome_manhattan(lcimp))
+ggsave("../plots/supp_figs/lcimp_manhattan.tiff", dpi = 300, width = 15, height = 10)
 
 # ------------------------------------------------------------------------------
 
@@ -130,28 +109,12 @@ lcwgs_full <- lcwgs_outliers("../data/pcadapt/lcwgs_n361_pcadapt_7h2.pcadapt.zsc
 ggsave("../plots/ots28_manhattans.tiff", dpi = 300, width = 12, height = 8)
 
 
-# Outlier comparisons ----------------------------------------------------------
-
-# # osnp <- \(x) paste0(x[x$out == "Y", "CHROM"],
-# #                     x[x$out == "Y", "POS"])
-# 
-# common_snps <- data.frame(snp = c(paste0(lcimp$CHROM, lcimp$POS),
-#                                  paste0(hdgbs$CHROM, hdgbs$POS))) %>%
-#   group_by(snp) %>% tally() %>% filter(n > 1)
-# 
-# 
-# outliers <- list(
-#   lcimp = lcimp,
-#   lcwgs = lcwgs_full
-# )
-# 
-# ggVennDiagram(outliers)
-
-
-
 # Regions under selection ------------------------------------------------------
 
 library(GenomicRanges)
+
+# Define region of Ots28 containing GREB1L/ROCK1.
+grebrock <- c(13278338:13630075)
 
 # Isolate Ots28 for this analysis and only consider "true" outliers.
 hd_out <- hdgbs[hdgbs$out == "Y" & hdgbs$CHROM == "NC_056456.1",] %>% filter(!is.na(pval)) 
@@ -169,34 +132,27 @@ df2GR <- \(x, mgw) GRanges(seqnames = x$CHROM,
 
 
 # Define outlier regions for each dataset.
-hd_pval <- df2GR(hd_out, mgw = 25e3)
-lcimp_p <- df2GR(im_out, mgw = 25e3)
+hd_pval <- df2GR(hd_out, mgw = 100e3)
+lcimp_p <- df2GR(im_out, mgw = 100e3)
+
+# Isolate regions that overlap between the two datasets.
+genOverlap <- subsetByOverlaps(hd_pval, lcimp_p, type = "any") 
 
 nrow(as.data.frame(hd_pval@ranges))
 nrow(as.data.frame(lcimp_p@ranges))
 nrow(as.data.frame(genOverlap@ranges))
 
-# Isolate regions that overlap between the two datasets.
-genOverlap <- subsetByOverlaps(hd_pval, lcimp_p, type = "any") 
+lcwgs_only <- subsetByOverlaps(lcimp_p, genOverlap, invert = T)
+hdgbs_only <- subsetByOverlaps(hd_pval, genOverlap, invert = T)
 
+reg_widths <- rbind(
+  as.data.frame(lcwgs_only@ranges) %>% mutate(ds = "Imputed lcWGS only"),
+  as.data.frame(hdgbs_only@ranges) %>% mutate(ds = "hdGBS only"),
+  as.data.frame(genOverlap@ranges) %>% mutate(ds = "Shared regions")
+)
 
-
-
-# test <- rbind(
-#   as.data.frame(lcimp_p@ranges) %>% mutate(ds = "lcWGS"),
-#   as.data.frame(subsetByOverlaps(lcimp_p, hd_pval, type = "any", invert = T)@ranges) %>% 
-#     mutate(ds = "lcWGS overlaps"),
-#   as.data.frame(hd_pval@ranges) %>% mutate(ds = "hdGBS"),
-#   as.data.frame(subsetByOverlaps(hd_pval, lcimp_p, type = "any", invert = T)@ranges) %>% 
-#     mutate(ds = "hdgbs overlaps"),
-#   as.data.frame(subsetByOverlaps(hd_pval, lcimp_p, type = "any", invert = F)@ranges) %>% 
-#     mutate(ds = "shared overlaps")
-# )
-# 
-# ggplot(data = test[test$width > 1,], aes(x = ds, y = width/1e3)) + 
-#   geom_boxplot() + labs(x = NULL, y = "Outlier region width (kbp)")
-
-
+waov <- aov(width ~ ds, data = reg_widths); summary(waov)
+ggplot(data = reg_widths, aes(x = ds, y = log10(width))) + geom_boxplot()
 
 
 # Create a vector of all possible SNPs that fall in the overlapping 
@@ -204,8 +160,6 @@ genOverlap <- subsetByOverlaps(hd_pval, lcimp_p, type = "any")
 overlap_snps <- rowwise(as.data.frame(genOverlap@ranges)) %>%  
   mutate(seq = list(seq(start, end, by = 1))) %>% 
   select(seq) %>% unlist() %>% as.vector()
-
-test <- as.data.frame(subsetByOverlaps(lcimp_p, hd_pval, type = "any", invert = T)@ranges)
 
 # Function for visualizing shared and non-shared outlier SNPs.
 Ots28man <- \(df, shared_list, alpha) {
@@ -260,24 +214,6 @@ mans <- cowplot::plot_grid(plotlist = list(hdgbs28 + xlab(NULL) +
 mans + draw_plot(outlier_leg, x = 1/8, y = 0.92, width = 0.6, height = 0.1)
 # ConGenFunctions::insettr(mans, outlier_leg, "tl", height = 1, width = 1)
 
-ggsave("../plots/shared_manhattans.tiff", dpi = 300, width = 12, height = 8)
+ggsave("../plots/shared_manhattans_100kb.tiff", dpi = 300, width = 12, height = 8)
 
  
-# lcimp28 +
-#   geom_magnify(from = c(13.3,13.6,0,8),
-#                to   = c(2,12,12,17))
-# 
-# 
-# # hd_ld_snps <- as.data.frame(hd_ld@fix[,c(1:2)]) %>% 
-# #   mutate(loc = paste0(CHROM, "_", POS))
-# # # lc_ld <- read.vcfR("../data/vcfs_n361/lcwgs_ldpruned_maf005_n361.vcf.gz")
-# lc_ld_snps <- as.data.frame(lc_ld@fix[,c(1:2)])
-# lc_ld_snps$loc <- paste0(lc_ld_snps$CHROM, "_", lc_ld_snps$POS)
-# 
-# ld_shared <- data.frame(loc = c(hd_ld_snps$loc, lc_ld_snps$loc)) %>%
-#   group_by(loc) %>% tally() %>% filter(n == 2) %>%
-#   mutate(chrom = paste0(gsub("\\.1.*", "", loc), ".1"),
-#          pos   = as.numeric(gsub(".*\\_", "", loc)))
-# write_tsv(ld_shared[,c(3:4)], "../data/hdgbs_lcwgs_shared_snps_ldpruned.txt", col_names = F)
-
-

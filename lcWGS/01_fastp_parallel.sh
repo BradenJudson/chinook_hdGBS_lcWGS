@@ -34,13 +34,13 @@ export fastp
 ls "$INPUT"/*_R1.fastq.gz | perl -pe 's/R[12]\.fastq\.gz//g' | \
         parallel -j "$NCPU" \
                 fastp -i {}R1.fastq.gz -I {}R2.fastq.gz \
-               -o "$OUTPUT"/{/}R1.fastq.gz \
+                -o "$OUTPUT"/{/}R1.fastq.gz \
                 -O "$OUTPUT"/{/}R2.fastq.gz \
-               --length_required="$LENGTH" \
-               --qualified_quality_phred="$QUAL" \
-              --correction \
-               --trim_tail1=1 \
-               --trim_tail2=1 \
-               --json 11_metrics/{/}.json \
-               --html 11_metrics/{/}.html \
-               --report_title={/}.html
+                --length_required="$LENGTH" \
+                --qualified_quality_phred="$QUAL" \
+                --correction \
+                --trim_tail1=1 \
+                --trim_tail2=1 \
+                --json 11_metrics/{/}.json \
+                --html 11_metrics/{/}.html \
+                --report_title={/}.html

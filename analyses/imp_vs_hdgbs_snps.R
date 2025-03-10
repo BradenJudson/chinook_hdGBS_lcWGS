@@ -50,6 +50,7 @@ mismatches <- dat %>% group_by(sample) %>%
             acc_m2    = round((n.match2/n()*100), 2),
             total_check = round((match/n()*100) + (n.match1/n()*100) + (n.match2/n()*100), 1))
 
+
 # Number of SNPs that match for both alleles, the reference allele but the alternate allele, etc.
 length(unique(dat[(dat$ref_hd_nuc == dat$ref_lc_nuc) & (dat$alt_hd_nuc == dat$alt_lc_nuc), "site"]))
 length(unique(dat[(dat$ref_hd_nuc == dat$ref_lc_nuc) & (dat$alt_hd_nuc != dat$alt_lc_nuc), "site"]))

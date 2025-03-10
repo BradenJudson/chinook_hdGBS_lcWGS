@@ -53,8 +53,9 @@ gl_hist <- \(csv) {
 }
 
 imputed  <- gl_hist(csv = "../data/GLs/maximum_imputed_GLs.csv")
-write.csv(imputed,  "../data/imputed_histogram_data.csv",  row.names = F)
+write.csv(imputed,  "../data/imputed_histogram_data2.csv",  row.names = F)
 
+# UPDATED FEB 25 - WAITING FOR UPDATED IMPUTED NOW.
 original <- gl_hist(csv = "../data/GLs/maximum_original_GLs.csv")
 write.csv(original, "../data/original_histogram_data.csv", row.names = F)
 
@@ -63,7 +64,8 @@ hist2 <- \(df) { ggplot(data = df[df$NC_056429.1 != 0,],
     theme_classic() + scale_x_continuous(breaks = seq(0, 1, 1/20)) +
     geom_col(just = 1, colour = "black", fill = "grey90") +
     labs(y = "SNPs (millions)", x = "Genotype probability") +
-    theme(panel.grid.minor = element_blank()) }
+    theme(panel.grid.minor = element_blank()) 
+  }
 
 (imp <- hist2(imputed))
 ggsave("../plots/imputedGPs_hist.tiff", dpi = 300, width = 10, height = 8)
@@ -71,3 +73,22 @@ ggsave("../plots/imputedGPs_hist.tiff", dpi = 300, width = 10, height = 8)
 (ori <- hist2(original))
 ggsave("../plots/originalGPs_hist.tiff", dpi = 300, width = 10, height = 8)
 
+
+# imp <- read.csv("../data/imputed_histogram_data.csv")
+
+dat <- rbind(imp[,c(1:2,37)] %>% mutate(ds = "Imputed"),
+           original[,c(1:2,37)] %>% mutate(ds = "Original")) %>% 
+  mutate(ds = factor(ds, levels = c("Original", "Imputed")))
+
+ggplot(data = dat[dat$total > 0,], 
+       aes(x = rightB, y = total/1e6, fill = ds)) +
+  geom_col(position = "dodge",  just = 1, 
+           colour = "black", size = 1/5) +
+  scale_x_continuous(breaks = seq(0, 1, 1/20)) +
+  labs(y = "SNPs (millions)", x = "Genotype probability") +
+  scale_fill_manual(values = c("grey90", "grey30")) +
+  theme_classic() +
+  theme(legend.title = element_blank(),
+        legend.position = "inside",
+        legend.position.inside = c(0.1, 0.9))
+ggsave("../plots/gp_hist.tiff", dpi = 300, width = 8, height = 6)

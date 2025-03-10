@@ -107,3 +107,11 @@ data/*n361_hdgbs.txt
 analyses/*keep
 data/chinook_lcwgs_maf1_m15_n361_snps.txt
 **.snpden
+analyses/supp_figs
+plots/supp_figs
+data/pca_n361
+**.tsv
+lcwgs.txt
+hdgbs.txt
+data/genotypes
+data/original_histogram_data.csv

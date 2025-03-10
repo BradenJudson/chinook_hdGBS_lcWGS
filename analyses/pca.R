@@ -18,6 +18,8 @@ sites <- readxl::read_xlsx("../data/chinook_lineages.xlsx", sheet = 2) %>%
 # --pca 1000 just ensures that all possible PCs are calculated (so %var explained is accurate).
 system("plink.exe --vcf ../data/vcfs_n361/hdgbs_maf5_m70_pruned.vcf.gz  --aec --double-id --pca 1000 --out ../data/pca/hdgbs_pruned")
 system("plink.exe --vcf ../data/vcfs_n361/lcwgs_ldpruned_maf005_n361.vcf.gz --aec --double-id --pca 1000 --out ../data/pca/lcwgs_imputed_pruned")
+system("plink.exe --vcf ../data/vcfs/hdgbs_indvsFiltered.vcf.gz --aec --double-id --pca 1000 --out ../data/pca/hdgbs_indvsFiltered")
+
 
 # Format PCA output data from above.
 format_eigenvec <- \(eigenvec_file) {
@@ -30,7 +32,7 @@ format_eigenvec <- \(eigenvec_file) {
     merge(., sites[,c("Site", "Latitude", "Region")], 
           by.x = "site_full",                                      # Add site latitudes (for plotting).
           by.y = "Site", all.x = T) %>%                            # Keep all individuals.
-    filter(site_full %in% shared_pops) %>%                         # Discard unwanted data.
+    # filter(site_full %in% shared_pops) %>%                         # Discard unwanted data.
     mutate(Region = factor(Region),
            site_full = factor(str_sub(gsub("([A-Z])",              # Set site as a factor.
                                       " \\1", site_full), 2)))     # Re-add spaces before second capitals (SanJuan -> San Juan).
@@ -43,6 +45,8 @@ format_eigenvec <- \(eigenvec_file) {
 # Obtain and organize PCA information for each dataset.
 hdgbs_pruned <- format_eigenvec("../data/pca/hdgbs_pruned.eigenvec")
 lcimp_pruned <- format_eigenvec("../data/pca/lcwgs_imputed_pruned.eigenvec")
+
+test <- format_eigenvec("../data/pca/hdgbs_indvsFiltered.eigenvec")
 
 # Summarize variation within populations. 
 hd_sd <- hdgbs_pruned %>% group_by(site_full) %>% 
@@ -65,14 +69,6 @@ ggboxplot(data = sds, x = "dataset",
   theme_bw() +
   theme(strip.background = element_rect(fill = NA, colour = NA))
 
-# (pc_dev <- ggplot(data = sds, 
-#        aes(x = dataset, y = value)) + 
-#   geom_violin() + theme_bw() +
-#   geom_boxplot(width = 1/8) + 
-#   facet_wrap(~ PC) +
-#   labs(x = NULL,
-#        y = "Standard deviation") +
-#     stat_compare_means(list(c("hdGBS", "Imputed lcWGS"))))
 
 ggsave("../plots/pca_stdevs.tiff", dpi = 300,
        width = 10, height = 5)
@@ -91,8 +87,6 @@ vcf_pca <- \(df, eigenval_file, title, legpos) {
   PC1 <- sprintf("%0.1f", eigvals[1,1]/sum(eigvals[,1])*100)
   PC2 <- sprintf("%0.1f", eigvals[2,1]/sum(eigvals[,1])*100)
   
-  df$sd <- case_when(df$site_full %in% top5sd ~ "High SD",
-                     !df$site_full %in% top5sd ~ "Low SD")
   
   # Assign ggplot object.
   (pc_scatter <- ggplot(df, 
@@ -101,14 +95,12 @@ vcf_pca <- \(df, eigenval_file, title, legpos) {
                            fill = factor(Region),
                            shape = factor(Region))) + 
                 geom_point(size = 2) + theme_bw() +
-                scale_shape_manual(values = c(rep(c(21,23),6), 21)) +
-                # scale_fill_manual(values = c(viridis_pal(option = "D")(length(unique(df$Region)))),
-                #                   labels = levels(unique(df$Region))) +
+                scale_shape_manual(values = c(rep(c(21,23),7), 21)) +
                 theme(legend.title = element_blank(),
                       legend.position = {{legpos}},
                       legend.text = element_text(size = 10)) + 
                 ggtitle({{title}}) +
-                guides(shape = guide_legend(nrow = 2, byrow = TRUE)) +
+                guides(shape = guide_legend(nrow = 3, byrow = TRUE)) +
                 labs(x = paste0("PC1 (", PC1, "%)"), 
                      y = paste0("PC2 (", PC2, "%)"))) 
   
@@ -120,8 +112,52 @@ vcf_pca <- \(df, eigenval_file, title, legpos) {
 (hdg_pr <- vcf_pca(df = hdgbs_pruned, title = "hdGBS", legpos = "right",
                    eigenval_file = "../data/pca/hdgbs_pruned.eigenval"))
 
-# lci_pc + ggmagnify::geom_magnify(from = c(0.03, 0.08, 0.045, 0.083),
-#                                  to   = c(-0.05, 0, 0.02, 0.09))
+(hdg_pr <- vcf_pca(df = hdgbs_pruned, title = "hdGBS", legpos = "right",
+                   eigenval_file = "../data/pca/hdgbs_pruned.eigenval") +
+    theme(legend.position = "none") +
+    scale_x_continuous(limits = c(0.03, 0.08)) +
+    scale_y_continuous(limits = c(0.03, 0.08)))
+
+
+(SG <- rbind(hdg_pr$data %>% mutate(dataset = "hdGBS"),
+           lci_pc$data %>% mutate(dataset = "Imputed lcWGS")) %>% 
+  dplyr::rename(Population = site_full) %>% 
+  filter(Region %in% c("Vancouver Island (east coast)")) %>%
+  ggplot(data = ., aes(x = PC1, y = PC2,
+                       color = Population)) +
+  geom_polygon(stat = "ellipse", aes(fill = Population), alpha = 1/5) +
+  geom_point(aes(shape = Population)) +
+  facet_wrap(~dataset, scales = "free") +
+  scale_shape_manual(values = seq(1:7)) +
+  theme_bw() +
+  theme(legend.position = "top",
+        legend.title = element_blank()))
+
+
+reg_list <- list()
+
+for (region in c("Stikine/Taku Rivers", "Yukon River", "Fraser River", "Thompson River",
+                 "Vancouver Island (west coast)", "Vancouver Island (east coast)")) {
+  
+  reg_list[[region]] <- rbind(hdg_pr$data %>% mutate(dataset = "hdGBS"),
+                              lci_pc$data %>% mutate(dataset = "Imputed lcWGS")) %>% 
+    dplyr::rename(Population = site_full) %>% 
+    filter(Region %in% region) %>%
+    ggplot(data = ., aes(x = PC1, y = PC2,
+                         color = Population)) +
+    geom_polygon(stat = "ellipse", aes(fill = Population), alpha = 1/5) +
+    geom_point(aes(shape = Population)) +
+    facet_wrap(~dataset, scales = "free") +
+    scale_shape_manual(values = seq(1:11)) +
+    theme_bw() +
+    theme(legend.position = "top",
+          legend.title = element_blank())
+  
+}
+
+(reg_pca <- cowplot::plot_grid(plotlist = reg_list))
+ggsave("../plots/supp_figs/regional_pcas.tiff", dpi = 300, height = 10, width = 15)
+
 
 
 # We require a different function for the lcWGS PCA data (it's a *.cov file).
@@ -146,18 +182,22 @@ lcwgs_pca <- \(cov_mat, bam_list, title) {
   
   pca_dat <- cbind(files, eigvec) %>%            # Bind it all together.
     merge(., indvs, by = "fish_ID") %>%          # Add populations.
-    merge(., sites[,c("Site", "Latitude")],      # Add site latitudes.
+    merge(., sites[,c("Site", "Latitude",        # Add site latitudes. 
+                      "Region")],       
           by.x = "site_full", 
           by.y = "Site", all.x = T) %>% 
     filter(site_full %in% shared_pops)           # Remove non-shared populations.
 
+  pca_dat$Region <- reorder(pca_dat$Region, pca_dat$Latitude)
     
   # Visualize PCA consistent with above "vcf-based" PCAs.
   (pc_scatter <- ggplot(data  = pca_dat,
                         aes(x = PC1, y = PC2,
                             group = site_full,
-                            fill  = factor(Latitude))) +
-      geom_point(shape = 21) + theme_bw() +
+                            fill  = factor(Region),
+                            shape = factor(Region))) +
+      geom_point(size = 2) + theme_bw() +
+      scale_shape_manual(values = c(rep(c(21,23),7), 21)) +
       # scale_fill_manual(values = c(viridis_pal(option = "D")(length(unique(pca_dat$site_full))))) +
       guides(fill = guide_legend(ncol = 1, byrow = TRUE)) +
       theme(legend.title = element_blank(),
@@ -168,8 +208,8 @@ lcwgs_pca <- \(cov_mat, bam_list, title) {
 
 }
 
-(lcwgs_full <- lcwgs_pca(cov_mat  = "../data/pca/lcwgs_full_8MSNPs.cov",
-                         bam_list = "../data/lcwgs_bam_list_n453.txt",
+(lcwgs_full <- lcwgs_pca(cov_mat  = "../data/pca_n361/angsd_n361_ldprune.cov",
+                         bam_list = "../data/bam_list_n361.txt",
                          title = "lcWGS") +
     scale_x_continuous(transform = "reverse") +
     scale_y_continuous(transform = "reverse"))

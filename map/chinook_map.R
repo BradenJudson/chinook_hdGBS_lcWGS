@@ -10,7 +10,7 @@ library(ggrepel); library(rnaturalearth); library(cowplot); library(viridis)
 # Establish base map -----------------------------------------------------------
 
 # Download American shape data and a subset of the Canadian data.
-USA <- sf::st_as_sf(geodata::gadm(country = "USA", level = 0, path = "."))
+USA <- sf::st_as_sf(geodata::gadm(country = "USA", level = 1, path = "."))
 prov <- sf::st_as_sf(geodata::gadm(country = "CAN", level = 1, path = "."))
 bcn <- prov[prov$NAME_1 %in% c("Alberta", "Yukon", "Northwest Territories", "Nunavut"),]
 
@@ -18,12 +18,14 @@ bcn <- prov[prov$NAME_1 %in% c("Alberta", "Yukon", "Northwest Territories", "Nun
 # Necessary due to complexity of coastline.
 bch <- st_transform(bc_bound_hres(), crs = 4326)
 
-sites <- read.csv("../data/ch2023_n361.csv") %>% 
+sites <- read.csv("../data/ch_site_info.csv") %>%
+  filter(!Site %in% c("Trinity", "Swift", "Kincolith", 
+                      "Harrison", "Raft", "Nahatlatch")) %>% 
   arrange(Latitude) %>% 
   mutate(sitenum = as.numeric(rownames(.))) 
 
 # To make computations faster, only use data from focal area.
-bound <- c(ymin = 40, ymax = 70, xmin = -170, xmax = -105)
+bound <- c(ymin = 35, ymax = 70, xmin = -170, xmax = -105)
 
 # Data from: https://www.hydrosheds.org/products/hydrorivers
 # North American and "Arctic" data are separate. 
@@ -36,7 +38,7 @@ rivers3 <- st_transform(sf::st_simplify(rivers[rivers$ORD_STRA >  3,]), crs = 43
 
 # For labeling later - sets text values along y axis at predefined heights.
 # (yv <- 55.5 - (55.5 - 40.5)*(1:(nrow(sites)/(57/29)))/nrow(sites)*2)
-(yv <- 60.5 - (60.5 - 44.5)*(1:(nrow(sites)/(57/29)))/nrow(sites)*2)
+(yv <- 60.5 - (60.5 - 44)*(1:(nrow(sites)/(54/27)))/nrow(sites)*2)
 
 (pnw <- ggplot(data = sites) +
     geom_sf(data = USA, fill = "gray90", linewidth = 1/10) +
@@ -47,7 +49,7 @@ rivers3 <- st_transform(sf::st_simplify(rivers[rivers$ORD_STRA >  3,]), crs = 43
                                       style = ggspatial::north_arrow_fancy_orienteering()) +
     ggspatial::annotation_scale(location = "bl", pad_x = unit(3.75, "cm"),
                                 pad_y = unit(1/10, "cm"), width_hint = 1/10) +
-    geom_sf(data = rivers3,   colour = "skyblue",  linewidth = 1/4) +  
+    geom_sf(data = rivers3,   colour = "skyblue",  linewidth = 1/4, alpha = 2/3) +  
     geom_point(data = sites, size = 3, stroke = 1/3,
                shape = 21, color = "black", fill = "white",
                aes(x = Longitude, y = Latitude)) +
@@ -56,16 +58,20 @@ rivers3 <- st_transform(sf::st_simplify(rivers[rivers$ORD_STRA >  3,]), crs = 43
     scale_fill_manual(values = rep("white", nrow(sites)),
                       labels = paste(sites$sitenum, sites$site)) +
     guides(fill = guide_legend(override.aes = list(alpha = 0))) +
-    coord_sf(xlim = c(-115, -165), ylim = c(45, 66)) +
+    coord_sf(xlim = c(-115, -165), ylim = c(44.5, 66)) +
     theme_minimal() +
     theme(legend.position = "right", panel.grid = element_blank(), 
           panel.background = element_rect(fill = alpha("skyblue", 1/10)),
           panel.border = element_rect(color = "black", fill = NA),
-          plot.margin = unit(c(0,0,0,0), "cm")) +
-    geom_rect(aes(ymin = 44.05, ymax = 60.2, xmax = -153, xmin = -167.25),
+          plot.margin = unit(c(0,0,0,0), "cm"),
+          axis.ticks = element_line(linewidth = 1/5)) +
+    geom_rect(aes(ymin = 43.6, ymax = 60.2, xmax = -153, xmin = -167.25),
               colour = "black", fill = "white", alpha = 1/6, linewidth = 1/20, inherit.aes = FALSE) +
-    annotate("text", x = -167, y = yv, label = c(paste(sites[sites$sitenum <= 25, "sitenum"], ". ", sites[sites$sitenum <= 25, "site"])), size = 2, hjust = 0) +
-    annotate("text", x = -160, y = yv, label = c(paste(sites[sites$sitenum >  25, "sitenum"], ". ", sites[sites$sitenum >  25, "site"])), size = 2, hjust = 0))
+    annotate("text", x = -167, y = yv, label = c(paste(sites[sites$sitenum <= 27, "sitenum"], ". ", sites[sites$sitenum <= 27, "Pop"])), size = 2, hjust = 0) +
+    annotate("text", x = -160, y = yv, label = c(paste(sites[sites$sitenum >  27, "sitenum"], ". ", sites[sites$sitenum >  27, "Pop"])), size = 2, hjust = 0) +
+    annotate("text", x = -150, y = 63.5, label = "AK") + annotate("text", x = -137, y = 65, label = "YU") +
+    annotate("text", x = -120, y = 47, label = "WA") + annotate("text", x = -115, y = 45, label = "ID") +
+    annotate("text", x = -125, y = 58, label = "BC") + annotate("text", x = -120, y = 44.8, label = "OR"))
 
 # Inset ------------------------------------------------------------------------
 
@@ -100,7 +106,7 @@ me <- map_data("world", "Mexico")
 
 ConGenFunctions::insettr(pnw, ins, location = "tr", width = 0.2, height = 0.2)
 
-ggsave("../plots/map_winset_50pops.tiff", dpi = 300, 
+ggsave("../plots/map_winset_54pops.tiff", dpi = 300, 
        width = 6, height = 6, bg = 'white')
 
 # Simplified PPT version -------------------------------------------------------
@@ -124,6 +130,6 @@ ggsave("../plots/map_winset_50pops.tiff", dpi = 300,
          plot.margin = unit(c(0,0,0,0), "cm"),
          axis.ticks = element_line(color = 'black')))
 
-ggsave("../plots/chinook_map_simple_n50.tiff", dpi = 300,
+ggsave("../plots/chinook_map_simple_n54.tiff", dpi = 300,
        width = 6, height = 6, bg = 'white')
 

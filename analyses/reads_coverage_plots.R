@@ -10,16 +10,38 @@ lcwgs_depth <- read_delim("../lcWGS/stats/bam_coverage.txt", col_names = c("samp
 
 lcwgs <- merge(lcwgs_depth, lcwgs_reads, by = "sample")
 
-n361 <- read.delim("../data/pop_map_n361.txt", col.names = c("sample", "pop"))
+summary(lcwgs$depth); sd(lcwgs$depth)
+summary(lcwgs$reads); sd(lcwgs$reads)
+
+ggplot(data = lcwgs, aes(x = depth, y = reads)) + geom_point()
+
+# n361 <- read.delim("../data/pop_map_n361.txt", col.names = c("sample", "pop"))
 
 
 # hdGBS data -------------------------------------------------------------------
 
-hdgbs_depth <- read_delim("../hdGBS/stats/unfiltered_stats_complete/out.idepth") %>% 
-  rename("Sample" = INDV)
-hdgbs_reads <- read.csv("../hdGBS/stats/sample_reads.csv", row.names = 1)[,c(1:2)]
+hdgbs_depth <- read_delim("../hdGBS/stats/unfiltered_stats_complete/out.idepth") 
+hdreads <- read.delim("../hdGBS/stats/unfiltered_stats/indv_reads.txt", sep = "", 
+                      header = F, col.names = c("sample", "reads")) %>% 
+  mutate(INDV = gsub(".1.fq.gz", "", sample))
+  
 
-hdgbs <- merge(hdgbs_depth, hdgbs_reads) %>% filter(!Sample %in% n361$sample)
+hdgbs <- merge(hdgbs_depth, hdreads) %>% 
+  filter(!INDV %in% nonChinook$Sample)
+
+summary(hdgbs$MEAN_DEPTH)
+summary(hdgbs$reads)
+
+
+
+hd <- hdgbs %>% 
+  mutate(remove = case_when(
+    reads < mean(reads) - 3*sd(reads)~ "out",
+    reads > mean(reads) + 3*sd(reads)~ "out",
+  ))
+
+ggplot(data = hdgbs, aes(x = MEAN_DEPTH, y = reads)) + geom_point()
+
 
 # ------------------------------------------------------------------------------
 
