@@ -110,6 +110,8 @@ data/chinook_lcwgs_maf1_m15_n361_snps.txt
 analyses/supp_figs
 plots/supp_figs
 data/pca_n361
+data/pca_n385
+data/n385_shared_indvs.csv
 **.tsv
 lcwgs.txt
 hdgbs.txt

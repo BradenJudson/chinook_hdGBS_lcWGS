@@ -1,6 +1,6 @@
 setwd("~/ots_landscape_genetics/analyses")
 
-library(tidyverse); library(viridis); library(cowplot)
+library(tidyverse); library(viridis); library(cowplot); library(ggpubr)
 
 indvs <- read.csv("../data/landgen_chinook_indvs.csv", na.strings = "") %>% 
   mutate(site_full = gsub("[[:space:]]Brood", "", site_full))
@@ -16,9 +16,9 @@ sites <- readxl::read_xlsx("../data/chinook_lineages.xlsx", sheet = 2) %>%
 
 
 # --pca 1000 just ensures that all possible PCs are calculated (so %var explained is accurate).
-system("plink.exe --vcf ../data/vcfs_n361/hdgbs_maf5_m70_pruned.vcf.gz  --aec --double-id --pca 1000 --out ../data/pca/hdgbs_pruned")
-system("plink.exe --vcf ../data/vcfs_n361/lcwgs_ldpruned_maf005_n361.vcf.gz --aec --double-id --pca 1000 --out ../data/pca/lcwgs_imputed_pruned")
-system("plink.exe --vcf ../data/vcfs/hdgbs_indvsFiltered.vcf.gz --aec --double-id --pca 1000 --out ../data/pca/hdgbs_indvsFiltered")
+system("plink.exe --vcf ../data/vcfs_n385/hdgbs_maf5_n385_ldpruned.vcf.gz  --aec --double-id --pca 1000 --out ../data/pca_n385/hdgbs_pruned")
+# system("plink.exe --vcf ../data/vcfs_n361/lcwgs_ldpruned_maf005_n361.vcf.gz --aec --double-id --pca 1000 --out ../data/pca/lcwgs_imputed_pruned")
+# system("plink.exe --vcf ../data/vcfs/hdgbs_indvsFiltered.vcf.gz --aec --double-id --pca 1000 --out ../data/pca/hdgbs_indvsFiltered")
 
 
 # Format PCA output data from above.
@@ -43,10 +43,41 @@ format_eigenvec <- \(eigenvec_file) {
 }
 
 # Obtain and organize PCA information for each dataset.
-hdgbs_pruned <- format_eigenvec("../data/pca/hdgbs_pruned.eigenvec")
-lcimp_pruned <- format_eigenvec("../data/pca/lcwgs_imputed_pruned.eigenvec")
+hdgbs_pruned <- format_eigenvec("../data/pca_n385/hdgbs_pruned.eigenvec")
+# lcimp_pruned <- format_eigenvec("../data/pca/lcwgs_imputed_pruned.eigenvec")
 
-test <- format_eigenvec("../data/pca/hdgbs_indvsFiltered.eigenvec")
+# pop_mahal <- function(PCAdf) {
+#   
+#   pcs <- split(PCAdf, PCAdf$site_full) %>% 
+#     lapply(., \(x) x[, grepl("PC", names(x))])
+#   
+#   # mah <- mahalanobis(x = pcs, center = colMeans(pcs),
+#   #                    cov = cov(pcs), tol = 1e-20)
+#   # 
+#   pc_dat <- lapply(pcs, \(x) mahalanobis(x, 
+#                                          center = colMeans(x),
+#                                          cov = cov(x),
+#                                          tol = 1e-30))
+#   
+#   df <- data.frame(
+#     pop = names(pcs),
+#     mean_mah = unlist(lapply(pc_dat, mean)),
+#     sd_mah = unlist(lapply(pc_dat, sd))
+#   )
+# 
+# 
+#   
+# }
+# 
+# j<-pop_mahal(hdgbs_pruned)
+
+hddat <- hdgbs_pruned[, grepl("PC", names(hdgbs_pruned))]
+
+hddat <- split(hdgbs_pruned, hdgbs_pruned$site_full) %>% 
+  lapply(., \(x) x[, grepl("PC", names(x))])
+
+hd_mahl <- mahalanobis(x = hddat, center = colMeans(hddat), cov = cov(hddat), tol=1e-20)
+j <- as.data.frame(hd_mahl)
 
 # Summarize variation within populations. 
 hd_sd <- hdgbs_pruned %>% group_by(site_full) %>% 
@@ -112,7 +143,7 @@ vcf_pca <- \(df, eigenval_file, title, legpos) {
 (hdg_pr <- vcf_pca(df = hdgbs_pruned, title = "hdGBS", legpos = "right",
                    eigenval_file = "../data/pca/hdgbs_pruned.eigenval"))
 
-(hdg_pr <- vcf_pca(df = hdgbs_pruned, title = "hdGBS", legpos = "right",
+(hdg_pr <- vcf_pca(df = hdgbs_pruned[hdgbs_pruned$site_full == "Imnaha",], title = "hdGBS", legpos = "right",
                    eigenval_file = "../data/pca/hdgbs_pruned.eigenval") +
     theme(legend.position = "none") +
     scale_x_continuous(limits = c(0.03, 0.08)) +

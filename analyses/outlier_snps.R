@@ -10,8 +10,8 @@ vcf2pc <- \(vcf_file) system(paste("plink.exe --vcf", vcf_file,
                            gsub("\\.vcf.gz", "", vcf_file)))
 
 # Make bed files necessary for pcadapt.
-vcf2pc("../data/vcfs_n361/hdgbs_maf5_m70.vcf.gz")
-vcf2pc("../data/vcfs_n361/chinook_filtered_maf5_imputed.vcf.gz")
+vcf2pc("../data/vcfs_n385/hdgbs_maf5.vcf.gz")
+# vcf2pc("../data/vcfs_n361/chinook_filtered_maf5_imputed.vcf.gz")
 
 
 # Function for conducting pcadapt analyses.
@@ -44,7 +44,7 @@ pcadapt2 <- \(vcf, K, q.alpha) {
 }
 
 # Conduct pcadapt with specified parameters. Returns dataframe of all SNPs and their outlier scores/status.
-hdgbs  <- pcadapt2("../data/vcfs_n361/hdgbs_maf5_m70.vcf.gz", K = 5, q.alpha = 1/100)
+hdgbs  <- pcadapt2("../data/vcfs_n385/hdgbs_maf5.vcf.gz", K = 5, q.alpha = 1/100)
 lcimp  <- pcadapt2("../data/vcfs_n361/chinook_filtered_maf5_imputed.vcf.gz", K = 5, q.alpha = 1/100)
 # write.csv(lcimp, "../data/lcwgs_n361_7Msnps_pcadapt.csv", row.names = F)
 # lcimp <- read.csv("../data/lcwgs_n361_7Msnps_pcadapt.csv")
