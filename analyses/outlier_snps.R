@@ -10,7 +10,8 @@ vcf2pc <- \(vcf_file) system(paste("plink.exe --vcf", vcf_file,
                            gsub("\\.vcf.gz", "", vcf_file)))
 
 # Make bed files necessary for pcadapt.
-vcf2pc("../data/vcfs_n385/hdgbs_maf5.vcf.gz")
+vcf2pc("../data/vcfs_n385/hdgbs_maf5_n385.vcf.gz")
+vcf2pc("../data/vcfs_n385/chinook_lcwgs_maf005_n385_imputed_filtered.vcf.gz")
 # vcf2pc("../data/vcfs_n361/chinook_filtered_maf5_imputed.vcf.gz")
 
 
@@ -44,9 +45,9 @@ pcadapt2 <- \(vcf, K, q.alpha) {
 }
 
 # Conduct pcadapt with specified parameters. Returns dataframe of all SNPs and their outlier scores/status.
-hdgbs  <- pcadapt2("../data/vcfs_n385/hdgbs_maf5.vcf.gz", K = 5, q.alpha = 1/100)
-lcimp  <- pcadapt2("../data/vcfs_n361/chinook_filtered_maf5_imputed.vcf.gz", K = 5, q.alpha = 1/100)
-# write.csv(lcimp, "../data/lcwgs_n361_7Msnps_pcadapt.csv", row.names = F)
+hdgbs  <- pcadapt2("../data/vcfs_n385/hdgbs_maf5_n385.vcf.gz", K = 4, q.alpha = 1/100)
+lcimp  <- pcadapt2("../data/vcfs_n385/chinook_lcwgs_maf005_n385_imputed_filtered.vcf.gz", K = 4, q.alpha = 1/100)
+#write.csv(lcimp, "../data/lcwgs_n385_k4_pcadapt.csv", row.names = F)
 # lcimp <- read.csv("../data/lcwgs_n361_7Msnps_pcadapt.csv")
 
 genome_manhattan <- \(ds) {
@@ -97,14 +98,14 @@ lcwgs_outliers <- \(zscores, positions, q.alpha) {
 }
 
 lcwgs_full <- lcwgs_outliers("../data/pcadapt/lcwgs_n361_pcadapt_7h2.pcadapt.zscores",
-                             "../data/lcwgs_snp_positions_n361_7M.txt", q.alpha = 1/1000)
+                             "../data/lcwgs_snp_positions_n385_8M.txt", q.alpha = 1/1000)
 
 (lcma28 <- Ots28man(lcwgs_full))
 
-# (mans <- cowplot::plot_grid(plotlist = list(hdgbs28 + xlab(NULL),
-#                                             lcma28 + xlab(NULL), lcimp28), 
-#                             labels = c("hdGBS", "lcWGS", "Imputed lcWGS"), 
-#                             label_x = 0.05, ncol = 1, hjust = 0))
+(mans <- cowplot::plot_grid(plotlist = list(hdgbs28 + xlab(NULL),
+                                            lcma28 + xlab(NULL), lcimp28),
+                            labels = c("hdGBS", "lcWGS", "Imputed lcWGS"),
+                            label_x = 0.05, ncol = 1, hjust = 0))
 
 ggsave("../plots/ots28_manhattans.tiff", dpi = 300, width = 12, height = 8)
 
@@ -123,17 +124,30 @@ im_out <- lcimp[lcimp$out == "Y" & lcimp$CHROM == "NC_056456.1",] %>% filter(!is
 nrow(hd_out); nrow(im_out)
 
 # Compute genomic ranges of outliers with a given minimum gapwidth.
-df2GR <- \(x, mgw) GRanges(seqnames = x$CHROM,
-                      ranges = IRanges(start = x$POS,
-                                       end   = x$POS)) %>% 
+df2GR <- \(x, flank) {
+  
+  gr <- GRanges(seqnames = x$CHROM,
+                ranges = IRanges(start = x$POS,
+                                 end   = x$POS)) %>% 
                   `names<-`(., x$loc) %>% 
-                   reduce(., min.gapwidth = mgw,
+                   reduce(., min.gapwidth = 2*flank,
                           with.revmap = F)
+
+  start(gr) <- start(gr) - flank
+  end(gr)   <- end(gr)   + flank
+  
+  # NC_056456.1 is 45212454bp.
+  start(gr) <- ifelse(start(gr) < 0, no = start(gr), yes = 1)
+  end(gr)   <- ifelse(end(gr) > 45212454, no = end(gr), yes = 45212454)
+  
+  return(gr)
+  
+  }
 
 
 # Define outlier regions for each dataset.
-hd_pval <- df2GR(hd_out, mgw = 100e3)
-lcimp_p <- df2GR(im_out, mgw = 100e3)
+hd_pval <- df2GR(hd_out, flank = 1e4)
+lcimp_p <- df2GR(im_out, flank = 1e4)
 
 # Isolate regions that overlap between the two datasets.
 genOverlap <- subsetByOverlaps(hd_pval, lcimp_p, type = "any") 
@@ -165,11 +179,15 @@ overlap_snps <- rowwise(as.data.frame(genOverlap@ranges)) %>%
 Ots28man <- \(df, shared_list, alpha) {
   
   df <- df[!is.na(df$pval),] %>% # Create a column for the SNP - is the outlier unique or not?
+    filter(CHROM == "NC_056456.1") %>% 
     mutate(outlier = factor(case_when(POS %in% shared_list & out == "Y" ~ "Shared outlier",
                                       POS %in% shared_list & out == "N" ~ "Non-outlier",
                                      !POS %in% shared_list & out == "Y" ~ "Unique outlier",
                                      !POS %in% shared_list & out == "N" ~ "Non-outlier"),
                             levels = c("Shared outlier", "Unique outlier", "Non-outlier")))
+  
+  max_y <- -log10(min(df$qval))
+  max_g <- -log10(min(df[df$POS %in% grebrock, "qval"]))
 
   ggplot(data = df[df$CHROM == "NC_056456.1",],
          aes(x = POS/1e6, y = -log10(qval), 
@@ -190,11 +208,11 @@ Ots28man <- \(df, shared_list, alpha) {
           legend.box.background = element_rect(colour = "black")) +
     coord_cartesian(clip = "off", xlim = c(0, 43.2)) + 
     theme(plot.margin = ggplot2::margin(15, 175, 10, 10)) +
-    geom_magnify(from = c(13.3, 13.6, 0, 8),
-                 to   = c(47, 57, 0, 15),
+    geom_magnify(from = c(13.3, 13.6, 0, max_g + 0.1*max_g),
+                 to   = c(47, 57, 0, max_y),
                  proj.linetype = 0,
                  axes = "xy") +
-    annotate("text", x = 52, y = 16.5, label = "GREB1L/ROCK1") +
+    annotate("text", x = 52, y = max_y, label = "GREB1L/ROCK1") +
     guides(fill = guide_legend(nrow = 1))
     
 }
@@ -212,8 +230,7 @@ mans <- cowplot::plot_grid(plotlist = list(hdgbs28 + xlab(NULL) +
                             label_x = 0.05, ncol = 1, hjust = 0) +
   theme(plot.margin = ggplot2::margin(20,0,0,0))
 mans + draw_plot(outlier_leg, x = 1/8, y = 0.92, width = 0.6, height = 0.1)
-# ConGenFunctions::insettr(mans, outlier_leg, "tl", height = 1, width = 1)
 
-ggsave("../plots/shared_manhattans_100kb.tiff", dpi = 300, width = 12, height = 8)
+ggsave("../plots/shared_manhattans_10kb.tiff", dpi = 300, width = 12, height = 8)
 
  

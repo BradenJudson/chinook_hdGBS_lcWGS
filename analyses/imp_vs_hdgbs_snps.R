@@ -28,10 +28,10 @@ rf <- function(dir) paste0(dir,
   mutate(site = paste0(CHROM,"_",POS))
 
 # Read in each dataset and format.
-hdgbs <- rf(dir = "../data/ind_afs/hdgbs_n361_ref/") %>% 
+hdgbs <- rf(dir = "../data/ind_afs/hdgbs_n385/") %>% 
   mutate(ref_frq_hd = AL1AF)
 # hdgbs$ref_frq <- hdgbs$AL1AF
-lcwgs <- rf(dir = "../data/ind_afs/impLC_n361_ref/") %>% 
+lcwgs <- rf(dir = "../data/ind_afs/impLC_n385/") %>% 
   mutate(ref_frq_lcwg = AL1AF)
 lcwgs$sample <- gsub("_freq_GLs.txt.frq", "", lcwgs$sample)
 dat <- merge(hdgbs, lcwgs, by = c("CHROM", "POS", "sample", "site")) %>% 
@@ -70,13 +70,14 @@ fwlabs <- c('acc_match' = "Matching genotypes",
 (alLF <- mismatches[,c("sample", "acc_match", "acc_m1", "acc_m2")] %>% 
   pivot_longer(cols = c("acc_match", "acc_m1", "acc_m2")) %>% 
     mutate(name = factor(name, levels = c("acc_match", "acc_m1", "acc_m2"))) %>% 
-  ggplot(aes(x = name, y = value/100)) + geom_violin() +
-    geom_boxplot(outlier.alpha = 0, width = 0.4) +
+  ggplot(aes(x = name, y = value/100)) + 
+    geom_jitter(width = 1/5, shape = 21, fill = "gray") +
+    geom_boxplot(outlier.alpha = 0, width = 0.4, alpha = 3/4) +
     theme_bw() +
     facet_wrap(. ~ name, scales = "free", 
                labeller = as_labeller(fwlabs)) +
     labs(x = NULL, y = NULL) + 
-    scale_y_continuous(labels = scales::percent, n.breaks = 3) +
+    scale_y_continuous(labels = scales::percent, n.breaks = 6) +
     theme(axis.text.x = element_blank(),
           axis.ticks.x = element_blank()))
 ggsave("../plots/imp_accuracy2.tiff", dpi = 300, width = 10, height = 6)
@@ -101,7 +102,7 @@ afcalc <- function(df, allele) df[,c("CHROM", "POS", "sample", allele)] %>%
   
 # Run of the hdGBS dataset focusing on the major allele.
 hd_afs <- afcalc(df = dat[dat$site %in% matched_alleles,], 
-                 allele = "ref_frq") 
+                 allele = "ref_frq_hd") 
 
 # hd_pos <- paste0(hd_afs$CHROM, "_", hd_afs$POS)
 
@@ -119,8 +120,8 @@ freqs <- merge(hd_afs, lc_afs, by = c("CHROM", "POS","n")) %>%
   mutate(site = paste0(CHROM, "_", POS)) %>% 
   filter(site %in% matched_alleles)
 
-write.csv(freqs, "../data/allele_frequencies_n361_refalt.csv", row.names = F)
-freqs <- read.csv("../data/allele_frequencies_n361_refalt.csv")
+write.csv(freqs, "../data/allele_frequencies_n385_refalt.csv", row.names = F)
+freqs <- read.csv("../data/allele_frequencies_n385_refalt.csv")
 
 (frqs <- ggplot(data = freqs, aes(x = AF, y = AFlci)) +
   geom_pointdensity() +
@@ -160,8 +161,8 @@ ggsave("../plots/test.tiff", dpi = 300,
 
 # Using vcftools --gzvcf *.vcf.gz --SNPdensity 1000
 
-lcwgs_snpden <- read.delim("../data/chinook_lcwgs_snp_density.snpden", sep = "\t")
-hdgbs_snpden <- read.delim("../data/hdgbs_snp_density.snpden", sep = "\t")
+lcwgs_snpden <- read.delim("../data/chinook_lcwgs_n385.snpden", sep = "\t")
+hdgbs_snpden <- read.delim("../data/hdgbs_n385.snpden", sep = "\t")
 
 summary(lcwgs_snpden$VARIANTS.KB); hist(lcwgs_snpden$VARIANTS.KB)
 summary(hdgbs_snpden$VARIANTS.KB); hist(hdgbs_snpden$VARIANTS.KB)

@@ -117,3 +117,7 @@ lcwgs.txt
 hdgbs.txt
 data/genotypes
 data/original_histogram_data.csv
+data/data_n385/
+data/vcfs_n385/
+data/fst_n385/
+**.csv

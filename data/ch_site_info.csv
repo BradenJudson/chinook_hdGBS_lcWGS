@@ -1,61 +1,61 @@
-Stock_Code,Reporting_Unit,Conservation_Unit,Population,Site,Province_State,Latitude,Longitude,Type,Pop
-1000158,Lower Columbia River,LCR,ABERNATHY_RIVER,Abernathy,WA,46.1335,-123.0852,Ocean,Abernathy
-2191,South Thompson_SU_0.3,13,ADAMS_RIVER,Adams,BC,50.89386286,-119.5505675,Mixed,Adams
-1000365,Alaska_Lower Yukon River,AKYR-L,ANDREAFSKY_RIVER,Andreafsky,AK,62.068106,-163.111639,,Andreafsky
-1000128,Middle Yukon River and tributaries,73,BIG_SALMON_RIVER,BigSalmon,YU,61.88110392,-134.9194263,,Big Salmon
-152,Lower Fraser River_SP_1.3,4,BIRKENHEAD_RIVER,Birkenhead,BC,50.30644079,-122.6070114,Stream,Birkenhead
-1622,North Thompson_SP_1.3,18,BLUE_RIVER,Blue,BC,52.10461061,-119.2796415,Stream,Blue
-352,Middle Fraser River_SP_1.3,10,CARIBOO_RIVER-UPPER,Cariboo,BC,52.82540899,-121.2758869,,Cariboo
-1000470,East Vancouver Island-Qualicum and Puntledge_FA_0.x,27,CHEAKAMUS_RIVER_FALL,Cheakamus,BC,49.77814025,-123.1719228,,Cheakamus
-118,East Vancouver Island-Cowichan and Koksilah_FA_0.x,22,COWICHAN_RIVER,Cowichan,BC,48.75355112,-123.6370155,Ocean,Cowichan
-1000249,Dean River,40,DEAN_RIVER-UPPER,Dean,BC,52.79484589,-126.2352857,,Dean
-2704,Taku_early timing,63,DUDIDONTU_RIVER,Dudidontu,BC,58.78944894,-131.983822,Stream,Dudidontu
-1303,South Thompson-Bessette Creek_SU_1.2,16,DUTEAU_CREEK,Duteau,BC,50.2516302,-118.9594602,,Duteau
-2000133,Ecstall,46,ECSTALL_RIVER,Ecstall,BC,54.16803318,-129.9525271,Stream,Ecstall
-1104,Middle Fraser River_SP_1.3,10,ENDAKO_RIVER,Endako,BC,54.04983464,-124.9040503,,Endako
-229,Lower Fraser River_FA_0.3,3,HARRISON_RIVER,Harrison,BC,49.21890306,-121.9450663,Ocean,Harrison
-1000360,Pelly,72,HOOLE_RIVER,Hoole,BC,61.74873179,-131.7110368,,Hoole
-1000199,Snake River_SP_SU,SR-SpSu,IMNAHA,Imnaha,ID,45.4905,-116.4556,Stream,Imnaha
-1000463,West Vancouver Island-Nootka and Kyuquot_FA_0.x,32,KAOUK_RIVER,Kaouk,BC,50.06362139,-127.098644,,Kaouk
-2515,Rivers Inlet,37,KILBELLA_RIVER,Kilbella,BC,51.7049254,-127.3404143,Ocean,Kilbella
-166,North and Central Coast-early timing,42,KILDALA_RIVER,Kildala,BC,53.82716545,-128.4871003,Ocean,Kildala
-120,Portland Sound-Observatory Inlet-Lower Nass,57,KINCOLITH_RIVER,Kincolith,BC,54.99636901,-129.9626807,Stream,Kincolith
-1000394,North and Central Coast-late timing,41,KITLOPE_RIVER,Kitlope,BC,53.21087108,-127.8439671,,Kitlope
-53,Kalum_late timing,50,KITSUMKALUM_RIVER-LOWER,Kitsumkalum,BC,54.52095877,-128.6608919,Stream,Kitsumkalum
-1917,Middle Skeena-mainstem tributaries,54,KITWANGA_RIVER,Kitwanga,BC,55.10261543,-128.0854741,,Kitwanga
-2000101,Klinaklini_SU_1.3,35,KLINAKLINI_RIVER,Klinaklini,BC,51.09258332,-125.6266259,,Klinaklini
-2194,Northern Yukon River and tributaries,76,KLONDIKE_RIVER,Klondike,YU,64.05215285,-139.4388902,,Klondike
-1000025,Upper Nass,58,KWINAGEESE_RIVER,Kwinageese,BC,56.19313196,-128.7947508,,Kwinageese
-2192,Stewart,74,MAYO_RIVER,Mayo,BC,63.58962386,-135.9123176,,Mayo
-2089,Yukon River-Teslin headwaters,68,MORLEY_RIVER,Morley,BC,60.09439428,-132.4896363,,Morley
-1000464,West Vancouver Island-Nootka and Kyuquot_FA_0.x,32,MOYEHA_RIVER,Moyeha,BC,49.41773585,-125.9126587,,Moyeha
-2078,Middle Fraser-Fraser Canyon_SP_1.3,8,NAHATLATCH_RIVER,Nahatlatch,BC,49.9779149,-121.5120321,,Nahatlatch
-437,East Vancouver Island-North_FA_0.x,29,NIMPKISH_RIVER,Nimpkish,BC,50.56689782,-126.9794859,Ocean,Nimpkish
-2092,Nordenskiold,71,NORDENSKIOLD_RIVER,Nordenskiold,BC,62.10329915,-136.3031012,,Nordenskiold
-2733,Bella Coola-Bentinck,39,NUSATSUM_RIVER,Nusatsum,BC,52.41019168,-126.4894389,,Nusatsum
-6335,Okanagan_1.x,1,OKANAGAN_RIVER,Okanagan,BC,49.07636988,-119.5181801,,Okanagan
-2718,Southern Mainland-Southern Fjords_FA_0.x,28,PHILLIPS_RIVER,Phillips,BC,50.55498132,-125.3650199,,Phillips
-249,Lower Fraser River-Upper Pitt_SU_1.3,5,PITT_RIVER-UPPER,Pitt,BC,49.56628595,-122.6343385,,Pitt
-74,Middle Fraser River-Portage_FA_1.3,9,PORTAGE_CREEK,Portage,BC,50.70803014,-122.2700586,,Portage
-100,East Vancouver Island-Qualicum and Puntledge_FA_0.x,27,QUALICUM_RIVER,BigQualicum,BC,49.39884025,-124.6091444,Ocean,Big Qualicum
-45,North Thompson_SU_1.3,19,RAFT_RIVER,Raft,BC,51.63177174,-119.9911334,,Raft
-1000584,Salmon Fork,77,SALMON_FORK_RIVER,SalmonFork,YU,66.54467486,-140.9996649,,Salmon Fork
-93,West Vancouver Island-South_FA_0.x,31,SAN_JUAN_RIVER,SanJuan,BC,48.56008206,-124.3987958,Ocean,San Juan
-1388,West Vancouver Island-South_FA_0.x,31,SARITA_RIVER,Sarita,BC,48.8978855,-125.0090965,,Sarita
-288,Boundary Bay_FA_0.3,2,SERPENTINE_RIVER,Serpentine,BC,49.08194793,-122.8529309,,Serpentine
-1000270,South Thompson_SU_1.3,14,SEYMOUR_RIVER,Seymour,BC,51.23862931,-118.9593268,,Seymour
-2000404,North & Central Oregon,NCOR,SIUSLAW_RIVER,Siuslaw,OR,44.0101,-124.0814,,Siuslaw
-262,Upper Fraser River_SP_1.3,12,SLIM_CREEK,Slim,BC,53.79685895,-121.1939303,,Slim
-160,Lower Thompson_SP_1.2,17,SPIUS_CREEK,Spius,BC,50.14716324,-121.0208052,,Spius
-5424,Upper Skeena,56,SUSTUT_RIVER,Sustut,BC,56.31706199,-127.3688016,,Sustut
-398,Upper Fraser River_SP_1.3,12,SWIFT_CREEK,Swift,BC,52.84865884,-119.2987913,Stream,Swift
-1731,Stikine_early timing,60,TAHLTAN_RIVER,Tahltan,BC,58.01056704,-130.9790603,,Tahltan
-1000239,Alsek,67,TAKHANNE_RIVER,Takhanne,BC,60.09605143,-136.9885098,,Takhanne
-1732,Upper Yukon River,69,TAKHINI_RIVER,Takhini,YU,60.84180017,-135.1857732,,Takhini
-1000143,Middle Fraser River_SU_1.3,11,TASEKO_RIVER,Taseko,BC,52.00672961,-123.6769982,,Taseko
-1000353,White and tributaries,75,TINCUP_CREEK,Tincup,BC,61.88766401,-139.545769,,Tincup
-1000290,Alaska_Mid Yukon River,AKYR-M,TOZITNA_RIVER,Tozitna,AK,65.0812,-152.2434,,Tozitna
-1000219,California Klamath Trinity,CAKT,TRINITY_RIVER_HATCHERY_FALL,Trinity,CA,41.1105,-123.4231,Ocean,Trinity
-2000220,Stikine_late timing,61,VERRETT_RIVER,Verrett,BC,56.6966178,-131.0040968,,Verrett
-60,Haida Gwaii-North,43,YAKOUN_RIVER,Yakoun,BC,53.64710965,-132.2033528,Mixed,Yakoun
-1000505,Taku_late timing,65,YETH_RIVER,Yeth,BC,58.8861,-133.0051,Stream,Yeth
+Stock_Code,Reporting_Unit,Conservation_Unit,Population,Site,Province_State,Latitude,Longitude,Type,Pop,PopNum
+1000219,California Klamath Trinity,CAKT,TRINITY_RIVER_HATCHERY_FALL,Trinity,CA,41.1105,-123.4231,Ocean,Trinity,0
+2000404,North & Central Oregon,NCOR,SIUSLAW_RIVER,Siuslaw,OR,44.0101,-124.0814,,Siuslaw,1
+1000199,Snake River_SP_SU,SR-SpSu,IMNAHA,Imnaha,ID,45.4905,-116.4556,Stream,Imnaha,2
+1000158,Lower Columbia River,LCR,ABERNATHY_RIVER,Abernathy,WA,46.1335,-123.0852,Ocean,Abernathy,3
+93,West Vancouver Island-South_FA_0.x,31,SAN_JUAN_RIVER,SanJuan,BC,48.56008206,-124.3987958,Ocean,San Juan,9
+118,East Vancouver Island-Cowichan and Koksilah_FA_0.x,22,COWICHAN_RIVER,Cowichan,BC,48.75355112,-123.6370155,Ocean,Cowichan,5
+1388,West Vancouver Island-South_FA_0.x,31,SARITA_RIVER,Sarita,BC,48.8978855,-125.0090965,,Sarita,8
+6335,Okanagan_1.x,1,OKANAGAN_RIVER,Okanagan,BC,49.07636988,-119.5181801,,Okanagan,4
+288,Boundary Bay_FA_0.3,2,SERPENTINE_RIVER,Serpentine,BC,49.08194793,-122.8529309,,Serpentine,12
+100,East Vancouver Island-Qualicum and Puntledge_FA_0.x,27,QUALICUM_RIVER,BigQualicum,BC,49.39884025,-124.6091444,Ocean,Big Qualicum,6
+1000464,West Vancouver Island-Nootka and Kyuquot_FA_0.x,32,MOYEHA_RIVER,Moyeha,BC,49.41773585,-125.9126587,,Moyeha,10
+249,Lower Fraser River-Upper Pitt_SU_1.3,5,PITT_RIVER-UPPER,Pitt,BC,49.56628595,-122.6343385,,Pitt,21
+1000470,East Vancouver Island-Qualicum and Puntledge_FA_0.x,27,CHEAKAMUS_RIVER_FALL,Cheakamus,BC,49.77814025,-123.1719228,,Cheakamus,13
+1000463,West Vancouver Island-Nootka and Kyuquot_FA_0.x,32,KAOUK_RIVER,Kaouk,BC,50.06362139,-127.098644,,Kaouk,11
+160,Lower Thompson_SP_1.2,17,SPIUS_CREEK,Spius,BC,50.14716324,-121.0208052,,Spius,22
+1303,South Thompson-Bessette Creek_SU_1.2,16,DUTEAU_CREEK,Duteau,BC,50.2516302,-118.9594602,,Duteau,16
+152,Lower Fraser River_SP_1.3,4,BIRKENHEAD_RIVER,Birkenhead,BC,50.30644079,-122.6070114,Stream,Birkenhead,23
+2718,Southern Mainland-Southern Fjords_FA_0.x,28,PHILLIPS_RIVER,Phillips,BC,50.55498132,-125.3650199,,Phillips,14
+437,East Vancouver Island-North_FA_0.x,29,NIMPKISH_RIVER,Nimpkish,BC,50.56689782,-126.9794859,Ocean,Nimpkish,7
+74,Middle Fraser River-Portage_FA_1.3,9,PORTAGE_CREEK,Portage,BC,50.70803014,-122.2700586,,Portage,17
+2191,South Thompson_SU_0.3,13,ADAMS_RIVER,Adams,BC,50.89386286,-119.5505675,Mixed,Adams,18
+2000101,Klinaklini_SU_1.3,35,KLINAKLINI_RIVER,Klinaklini,BC,51.09258332,-125.6266259,,Klinaklini,15
+1000270,South Thompson_SU_1.3,14,SEYMOUR_RIVER,Seymour,BC,51.23862931,-118.9593268,,Seymour,19
+2515,Rivers Inlet,37,KILBELLA_RIVER,Kilbella,BC,51.7049254,-127.3404143,Ocean,Kilbella,28
+1000143,Middle Fraser River_SU_1.3,11,TASEKO_RIVER,Taseko,BC,52.00672961,-123.6769982,,Taseko,24
+1622,North Thompson_SP_1.3,18,BLUE_RIVER,Blue,BC,52.10461061,-119.2796415,Stream,Blue,20
+2733,Bella Coola-Bentinck,39,NUSATSUM_RIVER,Nusatsum,BC,52.41019168,-126.4894389,,Nusatsum,29
+1000249,Dean River,40,DEAN_RIVER-UPPER,Dean,BC,52.79484589,-126.2352857,,Dean,30
+352,Middle Fraser River_SP_1.3,10,CARIBOO_RIVER-UPPER,Cariboo,BC,52.82540899,-121.2758869,,Cariboo,25
+398,Upper Fraser River_SP_1.3,12,SWIFT_CREEK,Swift,BC,52.84865884,-119.2987913,Stream,Swift,0
+1000394,North and Central Coast-late timing,41,KITLOPE_RIVER,Kitlope,BC,53.21087108,-127.8439671,,Kitlope,31
+60,Haida Gwaii-North,43,YAKOUN_RIVER,Yakoun,BC,53.64710965,-132.2033528,Mixed,Yakoun,35
+262,Upper Fraser River_SP_1.3,12,SLIM_CREEK,Slim,BC,53.79685895,-121.1939303,,Slim,26
+166,North and Central Coast-early timing,42,KILDALA_RIVER,Kildala,BC,53.82716545,-128.4871003,Ocean,Kildala,32
+1104,Middle Fraser River_SP_1.3,10,ENDAKO_RIVER,Endako,BC,54.04983464,-124.9040503,,Endako,27
+2000133,Ecstall,46,ECSTALL_RIVER,Ecstall,BC,54.16803318,-129.9525271,Stream,Ecstall,33
+53,Kalum_late timing,50,KITSUMKALUM_RIVER-LOWER,Kitsumkalum,BC,54.52095877,-128.6608919,Stream,Kitsumkalum,34
+120,Portland Sound-Observatory Inlet-Lower Nass,57,KINCOLITH_RIVER,Kincolith,BC,54.99636901,-129.9626807,Stream,Kincolith,0
+1917,Middle Skeena-mainstem tributaries,54,KITWANGA_RIVER,Kitwanga,BC,55.10261543,-128.0854741,,Kitwanga,37
+1000025,Upper Nass,58,KWINAGEESE_RIVER,Kwinageese,BC,56.19313196,-128.7947508,,Kwinageese,36
+5424,Upper Skeena,56,SUSTUT_RIVER,Sustut,BC,56.31706199,-127.3688016,,Sustut,38
+2000220,Stikine_late timing,61,VERRETT_RIVER,Verrett,BC,56.6966178,-131.0040968,,Verrett,39
+1731,Stikine_early timing,60,TAHLTAN_RIVER,Tahltan,BC,58.01056704,-130.9790603,,Tahltan,40
+2704,Taku_early timing,63,DUDIDONTU_RIVER,Dudidontu,BC,58.78944894,-131.983822,Stream,Dudidontu,41
+1000505,Taku_late timing,65,YETH_RIVER,Yeth,BC,58.8861,-133.0051,Stream,Yeth,42
+2089,Yukon River-Teslin headwaters,68,MORLEY_RIVER,Morley,BC,60.09439428,-132.4896363,,Morley,44
+1000239,Alsek,67,TAKHANNE_RIVER,Takhanne,BC,60.09605143,-136.9885098,,Takhanne,43
+1732,Upper Yukon River,69,TAKHINI_RIVER,Takhini,YU,60.84180017,-135.1857732,,Takhini,45
+1000360,Pelly,72,HOOLE_RIVER,Hoole,BC,61.74873179,-131.7110368,,Hoole,46
+1000128,Middle Yukon River and tributaries,73,BIG_SALMON_RIVER,BigSalmon,YU,61.88110392,-134.9194263,,Big Salmon,47
+1000353,White and tributaries,75,TINCUP_CREEK,Tincup,BC,61.88766401,-139.545769,,Tincup,48
+1000365,Alaska_Lower Yukon River,AKYR-L,ANDREAFSKY_RIVER,Andreafsky,AK,62.068106,-163.111639,,Andreafsky,49
+2092,Nordenskiold,71,NORDENSKIOLD_RIVER,Nordenskiold,BC,62.10329915,-136.3031012,,Nordenskiold,50
+2192,Stewart,74,MAYO_RIVER,Mayo,BC,63.58962386,-135.9123176,,Mayo,51
+2194,Northern Yukon River and tributaries,76,KLONDIKE_RIVER,Klondike,YU,64.05215285,-139.4388902,,Klondike,52
+1000290,Alaska_Mid Yukon River,AKYR-M,TOZITNA_RIVER,Tozitna,AK,65.0812,-152.2434,,Tozitna,53
+1000584,Salmon Fork,77,SALMON_FORK_RIVER,SalmonFork,YU,66.54467486,-140.9996649,,Salmon Fork,54
+229,Lower Fraser River_FA_0.3,3,HARRISON_RIVER,Harrison,BC,49.21890306,-121.9450663,Ocean,Harrison,#N/A
+2078,Middle Fraser-Fraser Canyon_SP_1.3,8,NAHATLATCH_RIVER,Nahatlatch,BC,49.9779149,-121.5120321,,Nahatlatch,#N/A
+45,North Thompson_SU_1.3,19,RAFT_RIVER,Raft,BC,51.63177174,-119.9911334,,Raft,#N/A

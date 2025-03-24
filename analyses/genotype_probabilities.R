@@ -2,9 +2,6 @@ setwd("~/ots_landscape_genetics/comp")
 
 library(tidyverse); library(sqldf)
 
-# files <- read.table("../data/bam_list_n453.txt", col.names = c("file")) %>%
-#   mutate(fish_ID = gsub(".dedup.clip.bam", "",
-#                         gsub("^.*IDT_i\\d{1,3}_\\d{1,3}\\.", "", file))) 
 
 # From: https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_018296145.1/ (June 2024).
 chrs <- read_tsv("../data/otsh_Sequence_report.tsv", show_col_types = FALSE) %>% 
@@ -53,11 +50,10 @@ gl_hist <- \(csv) {
 }
 
 imputed  <- gl_hist(csv = "../data/GLs/maximum_imputed_GLs.csv")
-write.csv(imputed,  "../data/imputed_histogram_data2.csv",  row.names = F)
+write.csv(imputed,  "../data/imputed_histogram_data_n385.csv",  row.names = F)
 
-# UPDATED FEB 25 - WAITING FOR UPDATED IMPUTED NOW.
 original <- gl_hist(csv = "../data/GLs/maximum_original_GLs.csv")
-write.csv(original, "../data/original_histogram_data.csv", row.names = F)
+write.csv(original, "../data/original_histogram_data_n385.csv", row.names = F)
 
 hist2 <- \(df) { ggplot(data = df[df$NC_056429.1 != 0,],
                         aes(x = rightB, y = total/1e6)) +
